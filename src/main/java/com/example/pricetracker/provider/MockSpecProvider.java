@@ -53,6 +53,8 @@ public class MockSpecProvider implements SpecProvider {
                 specs.put("storage_gb", new String[]{"1024", "2048", "2048", "4096"}[i]);
                 specs.put("psu_w", new String[]{"650", "750", "850", "1200"}[i]);
                 specs.put("cooling", new String[]{"stock", "air", "AIO", "liquid"}[i]);
+                specs.put("os", new String[]{"Windows 11", "Windows 11 Pro", "Linux Ubuntu", "Windows 11 Pro"}[i]);
+                specs.put("case", new String[]{"compact", "midi tower", "micro-atx", "full tower"}[i]);
             }
             default -> throw new SpecProvider.ProviderException("Unknown category: " + category);
         }

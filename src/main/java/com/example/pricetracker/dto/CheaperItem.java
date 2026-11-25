@@ -14,6 +14,7 @@ public record CheaperItem(
         BigDecimal price,
         BigDecimal sourcePrice,
         Map<String, String> attributes,
+        Map<String, Double> attributeScores,
         double score,
         double valueScore,
         List<String> missingAttributes,
@@ -40,5 +41,11 @@ public record CheaperItem(
 
     public double roundedValue() {
         return BigDecimal.valueOf(valueScore).setScale(2, RoundingMode.HALF_UP).doubleValue();
+    }
+
+    /** Процент баллов за отдельный параметр — используется для шкал в таблице. */
+    public long attributePercent(String key) {
+        Double value = attributeScores == null ? null : attributeScores.get(key);
+        return value == null ? 0 : Math.round(Math.max(0, Math.min(100, value)));
     }
 }

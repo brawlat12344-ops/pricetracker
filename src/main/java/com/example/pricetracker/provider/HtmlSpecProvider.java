@@ -46,6 +46,10 @@ public class HtmlSpecProvider implements SpecProvider {
             "(?i)(\\d{3,4}) ?(?:w|вт)\\b[^.]{0,30}(?:psu|блок питания|power supply)");
     private static final Pattern COOLING = Pattern.compile(
             "(?i)(liquid|aio|water|жидкост|air|воздуш|stock|боксов)");
+    private static final Pattern OS = Pattern.compile(
+            "(?i)(windows ?(?:11|10)(?: ?pro)?|linux|ubuntu|без ?ос|no ?os)");
+    private static final Pattern CASE = Pattern.compile(
+            "(?i)(full ?tower|midi ?tower|midi|micro-?atx|m-?atx|mini-?itx|mini|compact|atx|корпус)");
     private static final Pattern DRIVER = Pattern.compile("(?i)(planar|dynamic|balanced armature)");
     private static final Pattern ANC = Pattern.compile(
             "(?i)(adaptive anc|active noise cancelling|anc|шумоподавлен|no anc)");
@@ -93,6 +97,8 @@ public class HtmlSpecProvider implements SpecProvider {
             find(CAMERA, text, specs, "camera");
             find(PSU, text, specs, "psu_w");
             find(COOLING, text, specs, "cooling");
+            find(OS, text, specs, "os");
+            find(CASE, text, specs, "case");
             find(DRIVER, text, specs, "driver");
             find(ANC, text, specs, "anc");
             find(CONNECTIVITY, text, specs, "connectivity");
@@ -180,6 +186,9 @@ public class HtmlSpecProvider implements SpecProvider {
         if (name.contains("camera") || name.contains("камер")) return "camera";
         if (name.contains("watt") || name.contains("psu") || name.contains("блок питания")) return "psu_w";
         if (name.contains("cool") || name.contains("охлажд")) return "cooling";
+        if (name.contains("windows") || name.contains("linux") || name.contains("ubuntu")
+                || name.contains("операцион") || name.contains("ос")) return "os";
+        if (name.contains("корпус") || name.contains("case") || name.contains("form factor")) return "case";
         if (name.contains("driver") || name.contains("излучател")) return "driver";
         if (name.contains("noise") || name.contains("anc") || name.contains("шумоподавлен")) return "anc";
         if (name.contains("bluetooth") || name.contains("connect") || name.contains("подключ")) return "connectivity";

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" role="img" aria-label="Сборка ПК с подсветкой">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#070d16"/>
+      <stop offset="1" stop-color="#122438"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#38bdf8" stop-opacity=".20"/>
+      <stop offset="1" stop-color="#0ea5e9" stop-opacity=".03"/>
+    </linearGradient>
+    <linearGradient id="gpu" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22364d"/>
+      <stop offset="1" stop-color="#0d1824"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#38bdf8" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="640" height="240" fill="url(#bg)"/>
+  <circle cx="120" cy="120" r="120" fill="url(#glow)"/>
+  <g transform="translate(34 28)">
+    <rect x="0" y="0" width="300" height="184" rx="14" fill="#0a1018" stroke="#334155" stroke-width="2"/>
+    <rect x="10" y="10" width="280" height="164" rx="9" fill="url(#glass)" stroke="#38bdf8" stroke-opacity=".25"/>
+    <rect x="24" y="24" width="250" height="130" rx="6" fill="#0b1520" stroke="#1e3a52"/>
+    <rect x="36" y="36" width="90" height="60" rx="5" fill="#16283a" stroke="#38bdf8" stroke-opacity=".4"/>
+    <rect x="46" y="46" width="46" height="34" rx="3" fill="#0f1c29" stroke="#4ade80" stroke-opacity=".5"/>
+    <rect x="146" y="36" width="124" height="22" rx="4" fill="url(#gpu)" stroke="#38bdf8" stroke-opacity=".3"/>
+    <rect x="146" y="66" width="124" height="46" rx="5" fill="url(#gpu)" stroke="#38bdf8" stroke-opacity=".45"/>
+    <circle cx="264" cy="89" r="6" fill="#38bdf8" opacity=".8"/>
+    <g fill="none" stroke="#38bdf8" stroke-opacity=".75" stroke-width="3">
+      <circle cx="60" cy="126" r="18"/><circle cx="108" cy="126" r="18"/>
+      <circle cx="156" cy="126" r="18"/><circle cx="204" cy="126" r="18"/>
+      <circle cx="252" cy="126" r="18"/>
+    </g>
+    <g stroke="#38bdf8" stroke-opacity=".35" stroke-width="2">
+      <path d="M60 108v36M42 126h36M108 108v36M90 126h36M156 108v36M138 126h36M204 108v36M186 126h36M252 108v36M234 126h36"/>
+    </g>
+    <rect x="24" y="164" width="250" height="6" rx="3" fill="#38bdf8" opacity=".35"/>
+  </g>
+  <g fill="#94a3b8" font-family="Segoe UI, system-ui, sans-serif" font-size="13">
+    <text x="372" y="74">CPU</text>
+    <text x="372" y="104">GPU</text>
+    <text x="372" y="134">RAM</text>
+    <text x="372" y="164">SSD</text>
+    <text x="372" y="194">БП / ОС / Корпус</text>
+  </g>
+  <g fill="#38bdf8">
+    <circle cx="356" cy="70" r="3"/><circle cx="356" cy="100" r="3"/>
+    <circle cx="356" cy="130" r="3"/><circle cx="356" cy="160" r="3"/>
+    <circle cx="356" cy="190" r="3"/>
+  </g>
+</svg>

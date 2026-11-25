@@ -60,6 +60,12 @@
                    + ' · найдено карточек: ' + ${result.foundOffers}
                    + ' · отклонено: ' + ${result.rejectedOffers}"></p>
 
+        <div class="source-chips">
+            <span class="source-chip" th:each="attr : ${result.attributes}"
+                  th:if="${result.sourceSpecs[attr.key] != null}"
+                  th:text="${attr.icon} + ' ' + ${attr.label} + ': ' + ${result.sourceSpecs[attr.key]}"></span>
+        </div>
+
         <div th:if="${!result.warnings.isEmpty()}">
             <strong>Предупреждения:</strong>
             <ul class="warning-list">

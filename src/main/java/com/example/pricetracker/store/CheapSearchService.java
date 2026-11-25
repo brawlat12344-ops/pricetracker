@@ -141,7 +141,11 @@ public class CheapSearchService {
                 specs.getOrDefault("cpu", ""),
                 specs.getOrDefault("gpu", ""),
                 specs.getOrDefault("ram_gb", "") + " ГБ",
-                specs.getOrDefault("storage_gb", "") + " ГБ")
+                specs.getOrDefault("storage_gb", "") + " ГБ SSD",
+                "БП " + specs.getOrDefault("psu_w", "") + " Вт",
+                specs.getOrDefault("cooling", ""),
+                specs.getOrDefault("os", ""),
+                specs.getOrDefault("case", ""))
                 .replaceAll("\\s+", " ").trim();
     }
 
@@ -157,7 +161,8 @@ public class CheapSearchService {
         Evaluation evaluation = comparisons.evaluate(category, specs, price);
         UUID id = UUID.nameUUIDFromBytes(url.getBytes(StandardCharsets.UTF_8));
         items.add(new CheaperItem(id, store, title, url, price, source.price(), specs,
-                evaluation.score(), evaluation.valueScore(), evaluation.missingAttributes(), demo));
+                evaluation.attributeScores(), evaluation.score(), evaluation.valueScore(),
+                evaluation.missingAttributes(), demo));
         return 0;
     }
 

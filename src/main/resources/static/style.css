@@ -222,8 +222,99 @@ ul > li:nth-child(10) { animation-delay:.40s; }
 .chart { width:100%; height:auto; background:rgba(5,8,12,0.72); border-radius:10px; }
 code { background:rgba(255,255,255,.07); padding:2px 6px; border-radius:6px; }
 
+/* ---------- Визуальная матрица характеристик ---------- */
+.spec-banner {
+  position:relative; display:flex; align-items:center; gap:16px;
+  min-height:118px; margin-bottom:16px; border-radius:12px; overflow:hidden;
+  border:1px solid rgba(56,189,248,.22);
+  background:linear-gradient(90deg, rgba(8,16,26,.96), rgba(12,28,42,.72));
+  animation:rise .5s var(--ease) both;
+}
+.spec-banner img {
+  width:220px; height:118px; object-fit:cover; flex:0 0 auto; opacity:.92;
+}
+.spec-banner::after {
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(90deg, transparent 38%, rgba(5,7,10,.55));
+}
+.spec-banner-text { position:relative; z-index:1; display:flex; flex-direction:column; gap:5px; }
+.spec-banner-text strong { font-size:16px; letter-spacing:-.01em; }
+.spec-table-wrap {
+  padding:0; border:1px solid var(--stroke); border-radius:12px;
+  background:rgba(5,8,12,.35); box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+.spec-table { min-width:1040px; border-collapse:separate; border-spacing:0; }
+.spec-table th, .spec-table td {
+  border-bottom:1px solid rgba(255,255,255,.07); vertical-align:top;
+}
+.spec-table thead th {
+  position:sticky; top:0; z-index:2; padding:14px 12px;
+  background:rgba(12,18,26,.96); backdrop-filter:blur(6px);
+  color:var(--muted); text-transform:none; letter-spacing:0; font-size:12px;
+}
+.spec-table tbody td { padding:12px; }
+.spec-table thead th:first-child, .spec-table tbody td:first-child {
+  position:sticky; left:0; z-index:1; background:rgba(10,15,22,.96);
+}
+.spec-table thead th:first-child { z-index:3; }
+.spec-label-head { width:168px; }
+.spec-weight-head { width:76px; }
+.spec-source-head { width:160px; }
+.spec-name { display:flex; align-items:center; gap:8px; font-weight:600; white-space:nowrap; }
+.spec-icon {
+  display:inline-grid; place-items:center; flex:0 0 auto; width:28px; height:28px;
+  border-radius:8px; font-size:15px;
+  background:rgba(56,189,248,.12); border:1px solid rgba(56,189,248,.22);
+}
+.store-chip {
+  display:inline-block; margin-bottom:6px; padding:3px 9px; border-radius:999px;
+  font-size:11px; font-weight:800; letter-spacing:.03em;
+  background:rgba(56,189,248,.16); color:var(--accent);
+}
+.head-title { color:var(--text); font-size:13px; font-weight:600; line-height:1.35; text-transform:none; letter-spacing:0; }
+.head-price { margin-top:4px; color:var(--ok); font-size:15px; font-weight:800; }
+.spec-table thead th.is-winner {
+  background:rgba(19,48,36,.94); box-shadow:inset 0 2px 0 var(--ok);
+}
+.weight-pill {
+  display:inline-block; padding:2px 8px; border-radius:999px;
+  font-size:12px; font-weight:700; color:var(--muted);
+  background:rgba(148,163,184,.14);
+}
+.spec-value { min-width:150px; }
+.spec-value-text { font-size:13px; font-weight:600; word-break:break-word; }
+.spec-value.is-missing .spec-value-text { color:var(--muted); font-style:italic; }
+.spec-value.source { color:var(--accent); font-weight:600; }
+.spec-bar {
+  height:5px; margin-top:8px; border-radius:999px; overflow:hidden;
+  background:rgba(255,255,255,.08);
+}
+.spec-fill {
+  display:block; height:100%; border-radius:999px;
+  background:linear-gradient(90deg, var(--accent-2), var(--accent));
+  animation:barIn .7s var(--ease) both; transition:width .6s var(--ease);
+}
+.spec-bar.strong .spec-fill { background:linear-gradient(90deg, #16a34a, var(--ok)); }
+.spec-total { background:rgba(56,189,248,.06); }
+.spec-total strong { font-size:17px; }
+.spec-total.value strong { color:var(--ok); }
+.spec-hint { margin-top:10px; font-size:12px; }
+.source-chips { display:flex; flex-wrap:wrap; gap:7px; margin:12px 0; }
+.source-chip {
+  display:inline-flex; align-items:center; gap:5px; padding:5px 10px;
+  border:1px solid rgba(56,189,248,.22); border-radius:999px;
+  background:rgba(56,189,248,.08); color:var(--text); font-size:12px; font-weight:600;
+}
+@keyframes barIn {
+  from { transform:scaleX(0); transform-origin:left; }
+  to   { transform:scaleX(1); transform-origin:left; }
+}
+
 @media (max-width:720px) {
   header { justify-content:flex-start; }
+  .spec-banner img { width:130px; height:100px; }
+  .spec-banner { min-height:100px; }
+  .spec-banner-text strong { font-size:14px; }
   .nav { width:100%; }
   .nav a { flex:1 1 auto; padding:9px 12px; }
   .logout-form { margin-left:auto; }

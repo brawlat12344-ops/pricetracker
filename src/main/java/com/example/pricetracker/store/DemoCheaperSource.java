@@ -77,6 +77,14 @@ public class DemoCheaperSource {
         cooling.put("cooling", "AIO");
         result.add(cooling);
 
+        Map<String, String> os = copy(base);
+        os.put("os", upgradeOs(os.get("os")));
+        result.add(os);
+
+        Map<String, String> computerCase = copy(base);
+        computerCase.put("case", upgradeCase(computerCase.get("case")));
+        result.add(computerCase);
+
         Map<String, String> gpu = copy(base);
         gpu.put("gpu", upgradeGpu(gpu.get("gpu")));
         result.add(gpu);
@@ -112,9 +120,13 @@ public class DemoCheaperSource {
     private String demoTitle(Map<String, String> specs) {
         String title = String.join(" / ", specs.getOrDefault("cpu", "ПК"),
                 specs.getOrDefault("gpu", "без дискретной видеокарты"),
-                specs.getOrDefault("ram_gb", "?") + " ГБ");
+                specs.getOrDefault("ram_gb", "?") + " ГБ RAM",
+                specs.getOrDefault("storage_gb", "?") + " ГБ SSD");
         if (specs.containsKey("psu_w")) {
             title += " / БП " + specs.get("psu_w") + " Вт";
+        }
+        if (specs.containsKey("case")) {
+            title += " / корпус " + specs.get("case");
         }
         return title;
     }
@@ -135,6 +147,26 @@ public class DemoCheaperSource {
         if (value.contains("7800")) return "RX 7900 XTX";
         if (value.contains("arc")) return "RTX 4060";
         return raw == null ? "RTX 4070" : raw;
+    }
+
+    private String upgradeOs(String raw) {
+        String value = raw == null ? "" : raw.toLowerCase();
+        if (value.contains("без") || value.contains("no os") || value.contains("linux")
+                || value.contains("ubuntu") || value.contains("windows 10")) {
+            return "Windows 11";
+        }
+        if (value.contains("windows 11") && !value.contains("pro")) {
+            return "Windows 11 Pro";
+        }
+        return raw == null ? "Windows 11 Pro" : raw;
+    }
+
+    private String upgradeCase(String raw) {
+        String value = raw == null ? "" : raw.toLowerCase();
+        if (value.contains("compact") || value.contains("mini")) return "micro-atx";
+        if (value.contains("m-atx") || value.contains("micro")) return "midi tower";
+        if (value.contains("midi") || value.contains("atx")) return "full tower";
+        return raw == null ? "midi tower" : raw;
     }
 
     private String upgradePsu(String raw) {

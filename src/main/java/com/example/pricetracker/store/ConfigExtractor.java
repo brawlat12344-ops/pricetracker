@@ -9,8 +9,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Достаёт конфигурацию из текста карточки/названия: CPU, GPU, RAM, диск, БП, охлаждение.
- * Используется, когда страница магазина недоступна для парсера ( SPA, 401, 429 ).
+ * Достаёт конфигурацию из текста карточки/названия: CPU, GPU, RAM, SSD, БП, охлаждение, ОС, корпус.
+ * Используется, когда страница магазина недоступна для парсера (SPA, 401, 429).
  */
 @Component
 public class ConfigExtractor {
@@ -27,6 +27,10 @@ public class ConfigExtractor {
             "(?i)(\\d{3,4}) ?(?:w|вт)\\b[^.]{0,40}(?:psu|блок питания|power supply)");
     private static final Pattern COOLING = Pattern.compile(
             "(?i)(liquid|aio|water|жидкост|air|воздуш|stock|боксов)");
+    private static final Pattern OS = Pattern.compile(
+            "(?i)(windows ?(?:11|10)(?: ?pro)?|linux|ubuntu|без ?ос|no ?os)");
+    private static final Pattern CASE = Pattern.compile(
+            "(?i)(full ?tower|midi ?tower|midi|micro-?atx|m-?atx|mini-?itx|mini|compact|atx|корпус)");
 
     public Map<String, String> extract(String text) {
         Map<String, String> result = new LinkedHashMap<>();
@@ -40,6 +44,8 @@ public class ConfigExtractor {
         find(STORAGE, value, result, "storage_gb");
         find(PSU, value, result, "psu_w");
         find(COOLING, value, result, "cooling");
+        find(OS, value, result, "os");
+        find(CASE, value, result, "case");
         return result;
     }
 

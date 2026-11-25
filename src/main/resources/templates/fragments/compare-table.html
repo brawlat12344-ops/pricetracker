@@ -3,46 +3,77 @@
 <head><meta charset="UTF-8"></head>
 <body>
 <div th:fragment="table(result)">
-    <div class="table-wrap">
-    <table>
-        <thead>
-        <tr>
-            <th>Параметр</th>
-            <th>Вес</th>
-            <th th:each="item : ${result.items}">
-                <span th:text="${item.title}"></span>
-                <div class="muted" th:text="${item.price} + ' ₽'"></div>
-            </th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="attr : ${result.attributes}">
-            <td th:text="${attr.label}"></td>
-            <td th:text="${attr.weight} + '%'"></td>
-            <td th:each="item : ${result.items}"
-                th:text="${item.attributes[attr.key] != null ? item.attributes[attr.key] : '—'}"></td>
-        </tr>
-        <tr>
-            <td><strong>Итоговые баллы</strong></td>
-            <td>100%</td>
-            <td th:each="item : ${result.items}" th:text="${item.roundedScore}"></td>
-        </tr>
-        <tr>
-            <td><strong>Баллов за 1000 ₽</strong></td>
-            <td>—</td>
-            <td th:each="item : ${result.items}" th:text="${item.roundedValue}"></td>
-        </tr>
-        <tr>
-            <td><strong>Результат</strong></td>
-            <td>—</td>
-            <td th:each="item : ${result.items}">
-                <span class="badge ok" th:if="${item.productId == result.winnerId}">ЛУЧШЕЕ ЗА ЦЕНУ</span>
-                <span class="muted" th:unless="${item.productId == result.winnerId}">—</span>
-            </td>
-        </tr>
-        </tbody>
-    </table>
+    <div class="spec-banner">
+        <img th:src="@{/pc-specs.svg}" alt="Сборка ПК с подсветкой">
+        <div class="spec-banner-text">
+            <span class="badge ok">SPEC MATRIX</span>
+            <strong>Одна конфигурация — восемь параметров</strong>
+            <span class="muted">CPU, GPU, RAM, SSD, БП, охлаждение, ОС и корпус</span>
+        </div>
     </div>
+
+    <div class="table-wrap spec-table-wrap">
+        <table class="spec-table">
+            <thead>
+            <tr>
+                <th class="spec-label-head">Параметр</th>
+                <th class="spec-weight-head">Вес</th>
+                <th class="spec-source-head">
+                    Исходник
+                    <div class="muted" th:text="${result.sourcePrice} + ' ₽'"></div>
+                </th>
+                <th th:each="item : ${result.items}"
+                    th:classappend="${item.productId == result.winnerId} ? ' is-winner' : ''">
+                    <span class="store-chip" th:text="${item.store}"></span>
+                    <div class="head-title" th:text="${item.title}"></div>
+                    <div class="head-price" th:text="${item.price} + ' ₽'"></div>
+                    <span class="badge ok" th:if="${item.productId == result.winnerId}">ЛУЧШЕЕ ЗА ЦЕНУ</span>
+                    <span class="badge" th:if="${item.demo}">ДЕМО-ЦЕНА</span>
+                </th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="attr : ${result.attributes}">
+                <td class="spec-name">
+                    <span class="spec-icon" th:text="${attr.icon}"></span>
+                    <span th:text="${attr.label}"></span>
+                </td>
+                <td><span class="weight-pill" th:text="${attr.weightLabel()}"></span></td>
+                <td class="spec-value source"
+                    th:text="${result.sourceSpecs[attr.key] != null ? result.sourceSpecs[attr.key] : '—'}"></td>
+                <td th:each="item : ${result.items}" class="spec-value"
+                    th:classappend="${item.missingAttributes.contains(attr.key)} ? ' is-missing' : ''">
+                    <div class="spec-value-text"
+                         th:text="${item.attributes[attr.key] != null ? item.attributes[attr.key] : '—'}"></div>
+                    <div class="spec-bar">
+                        <span class="spec-fill" th:style="'width:' + ${item.attributePercent(attr.key)} + '%'"></span>
+                    </div>
+                </td>
+            </tr>
+            <tr class="spec-total">
+                <td class="spec-name"><span class="spec-icon">🏆</span> Итоговые баллы</td>
+                <td><span class="weight-pill">100%</span></td>
+                <td class="spec-value source muted">—</td>
+                <td th:each="item : ${result.items}" class="spec-value">
+                    <strong th:text="${item.roundedScore}"></strong>
+                    <div class="spec-bar strong">
+                        <span class="spec-fill" th:style="'width:' + ${item.roundedScore} + '%'"></span>
+                    </div>
+                </td>
+            </tr>
+            <tr class="spec-total value">
+                <td class="spec-name"><span class="spec-icon">💎</span> Баллов за 1000 ₽</td>
+                <td><span class="weight-pill">—</span></td>
+                <td class="spec-value source muted">—</td>
+                <td th:each="item : ${result.items}" class="spec-value">
+                    <strong th:text="${item.roundedValue}"></strong>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="muted spec-hint">Шкала под значением показывает долю баллов за параметр от эталона категории.
+        Серые ячейки означают, что сайт не отдал характеристику: такие карточки не попадают в список дешевле.</p>
 </div>
 </body>
 </html>
