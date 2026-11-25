@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -119,20 +120,23 @@ public class CheapSearchService {
                             + source.price() + " ₽. Попробуйте другую ссылку или порог цены.");
         }
 
-        items.sort(Comparator.comparingDouble(CheaperItem::valueScore).reversed()
+        items.sort(Comparator.comparingDouble(CheaperItem::sortValue).reversed()
                 .thenComparing(CheaperItem::price));
         CheaperItem winner = items.get(0);
         int discount = winner.discountPercent();
         String verdict = String.format(
-                "Лучшее предложение: %s — %s ₽ (на %d%% ниже исходных %s ₽), "
-                        + "%.1f баллов за конфигурацию и %.2f балла за 1000 ₽. "
-                        + "Подходящих вариантов: %d, отклонено: %d.",
-                winner.title(), winner.price(), discount, source.price(), winner.score(),
-                winner.valueScore(), items.size(), rejected);
+                "%s: %s ₽ (−%d%% к %s ₽). Конфигурация %.1f/10 · цена %.1f/10. "
+                        + "Подходит %d, отклонено %d.",
+                winner.store(), money(winner.price()), discount, money(source.price()),
+                winner.roundedScore(), winner.roundedValue(), items.size(), rejected);
 
         return new CheaperResponse(url, store.label(), category, catalog.get(category).label(),
                 source.title(), source.price(), source.specs(), catalog.get(category).attributes(),
                 items, winner.id(), verdict, warnings, search.offers().size(), rejected);
+    }
+
+    private String money(BigDecimal value) {
+        return String.format(Locale.ROOT, "%,.0f", value).replace(',', '\u00A0');
     }
 
     private String specsQuery(Map<String, String> specs) {
@@ -159,9 +163,14 @@ public class CheapSearchService {
             return 1;
         }
         Evaluation evaluation = comparisons.evaluate(category, specs, price);
+        double score10 = Math.max(0, Math.min(10, evaluation.score() / 10.0));
+        double sourcePrice = source.price().doubleValue();
+        double value10 = sourcePrice > 0
+                ? Math.min(10, score10 * sourcePrice / price.doubleValue())
+                : 0;
         UUID id = UUID.nameUUIDFromBytes(url.getBytes(StandardCharsets.UTF_8));
         items.add(new CheaperItem(id, store, title, url, price, source.price(), specs,
-                evaluation.attributeScores(), evaluation.score(), evaluation.valueScore(),
+                evaluation.attributeScores(), score10, value10,
                 evaluation.missingAttributes(), demo));
         return 0;
     }

@@ -77,7 +77,8 @@ docker compose ps -a
 конфигурации в магазине, где цену нужно проверить вручную.
 
 Скоринг переиспользует `ComparisonService.evaluate`: веса из `CategoryCatalog` для четырёх тем
-(`laptop`, `phone`, `headphones`, `pc`), результат — «баллов за 1000 ₽». Поиск ничего не пишет в БД.
+(`laptop`, `phone`, `headphones`, `pc`), а в вердикте и таблице показываются две оценки по шкале
+0–10 — за конфигурацию и за цену/качество. Поиск ничего не пишет в БД.
 
 ## Фон интерфейса
 
@@ -120,7 +121,7 @@ curl.exe -s -X POST http://localhost/api/cheaper -H "Authorization: Bearer $toke
 ```
 
 В ответе: `store`, `sourcePrice`, `sourceSpecs`, `items` (`store`, `title`, `url`, `price`,
-`discountPercent`, `attributes`, `score`, `valueScore`, `demo`), `winnerId`, `verdict`,
+`discountPercent`, `attributes`, `score` и `valueScore` (0–10), `demo`), `winnerId`, `verdict`,
 `warnings`, `foundOffers`, `rejectedOffers`. В список попадают только предложения с ценой
 строго ниже исходной и комплектацией не хуже. Ограничение — 10 карточек.
 

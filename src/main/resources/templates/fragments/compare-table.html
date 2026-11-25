@@ -54,29 +54,33 @@
                 </td>
             </tr>
             <tr class="spec-total">
-                <td class="spec-name"><span class="spec-icon">🏆</span> Итоговые баллы</td>
+                <td class="spec-name"><span class="spec-icon">🏆</span> Конфигурация / 10</td>
                 <td><span class="weight-pill">100%</span></td>
                 <td class="spec-value source muted">—</td>
                 <td th:each="item : ${result.items}" class="spec-value">
-                    <strong th:text="${item.roundedScore}"></strong>
+                    <strong th:text="${item.roundedScore} + '/10'"></strong>
                     <div class="spec-bar strong">
-                        <span class="spec-fill" th:style="'width:' + ${item.roundedScore} + '%'"></span>
+                        <span class="spec-fill" th:style="'width:' + ${item.scorePercent} + '%'"></span>
                     </div>
                 </td>
             </tr>
             <tr class="spec-total value">
-                <td class="spec-name"><span class="spec-icon">💎</span> Баллов за 1000 ₽</td>
+                <td class="spec-name"><span class="spec-icon">💎</span> Цена / качество / 10</td>
                 <td><span class="weight-pill">—</span></td>
                 <td class="spec-value source muted">—</td>
                 <td th:each="item : ${result.items}" class="spec-value">
-                    <strong th:text="${item.roundedValue}"></strong>
+                    <strong th:text="${item.roundedValue} + '/10'"></strong>
+                    <div class="spec-bar strong">
+                        <span class="spec-fill" th:style="'width:' + ${item.valuePercent} + '%'"></span>
+                    </div>
                 </td>
             </tr>
             </tbody>
         </table>
     </div>
-    <p class="muted spec-hint">Шкала под значением показывает долю баллов за параметр от эталона категории.
-        Серые ячейки означают, что сайт не отдал характеристику: такие карточки не попадают в список дешевле.</p>
+    <p class="muted spec-hint">Итоговые оценки — по шкале 0–10; шкалы под значениями показывают долю
+        баллов за параметр. Серые ячейки означают, что сайт не отдал характеристику: такие карточки
+        не попадают в список дешевле.</p>
 </div>
 </body>
 </html>

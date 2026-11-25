@@ -36,11 +36,33 @@ public record CheaperItem(
     }
 
     public double roundedScore() {
-        return BigDecimal.valueOf(score).setScale(1, RoundingMode.HALF_UP).doubleValue();
+        return scale(score);
     }
 
     public double roundedValue() {
-        return BigDecimal.valueOf(valueScore).setScale(2, RoundingMode.HALF_UP).doubleValue();
+        return scale(valueScore);
+    }
+
+    /** Ширина шкалы итоговой оценки: 0–10 превращается в 0–100%. */
+    public long scorePercent() {
+        return Math.round(Math.max(0, Math.min(10, score)) * 10);
+    }
+
+    /** Ширина шкалы цены/качества: 0–10 превращается в 0–100%. */
+    public long valuePercent() {
+        return Math.round(Math.max(0, Math.min(10, valueScore)) * 10);
+    }
+
+    /** Значение для сортировки без ограничения шкалой 0–10. */
+    public double sortValue() {
+        if (price == null || sourcePrice == null || price.signum() <= 0) {
+            return 0;
+        }
+        return score * sourcePrice.doubleValue() / price.doubleValue();
+    }
+
+    private double scale(double value) {
+        return BigDecimal.valueOf(value).setScale(1, RoundingMode.HALF_UP).doubleValue();
     }
 
     /** Процент баллов за отдельный параметр — используется для шкал в таблице. */

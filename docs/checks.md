@@ -104,11 +104,11 @@ curl.exe -s -X POST "$base/cheaper" -H "Authorization: Bearer $token" `
   "store": "DNS-Shop",
   "sourcePrice": 146500.00,
   "items": [
-    {"store":"М.Видео","title":"core i5 / rtx 4070 / 64 ГБ / БП 850 Вт","price":104020.00,"score":80.1,"valueScore":0.77,"demo":true},
-    {"store":"DNS-Shop","title":"Core i7-14700K / rtx 4070 / 32 ГБ","price":109880.00,"score":70.0,"valueScore":0.66,"demo":true}
+    {"store":"М.Видео","title":"core i5 / rtx 4070 / 64 ГБ / БП 850 Вт","price":104020.00,"score":8.0,"valueScore":10.0,"demo":true},
+    {"store":"DNS-Shop","title":"Core i7-14700K / rtx 4070 / 32 ГБ","price":109880.00,"score":7.0,"valueScore":9.3,"demo":true}
   ],
   "winnerId": "...",
-  "verdict": "Лучшее предложение: ... на 29% ниже исходных 146500.00 ₽ ...",
+  "verdict": "М.Видео: 104 020 ₽ (−29% к 146 500 ₽). Конфигурация 8.0/10 · цена 10.0/10. Подходит 2, отклонено 4.",
   "warnings": [
     "Характеристики исходной страницы не прочитаны: HTTP 401 ...",
     "DNS-Shop: поиск недоступен — HTTP 401",
@@ -148,5 +148,5 @@ curl.exe -s http://localhost/cheaper -H "Cookie: pricetracker_token=$token"
 1. Вывод `docker compose ps -a` (четыре сервиса, без воркера).
 2. Вывод `curl.exe http://localhost/actuator/health`.
 3. Вывод `POST /api/cheaper` с `store`, `sourcePrice`, `items` и `warnings`.
-4. Страницу `/cheaper` с формой, вердиктом, скидками и таблицей «баллов за 1000 ₽».
+4. Страницу `/cheaper` с формой, коротким вердиктом, скидками и 10-балльной таблицей оценок.
 5. Вывод `docker exec pt-db psql ... \dt` — только `users` и Flyway-история.
