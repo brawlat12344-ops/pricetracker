@@ -25,7 +25,10 @@
                 <th th:each="item : ${result.items}"
                     th:classappend="${item.productId == result.winnerId} ? ' is-winner' : ''">
                     <span class="store-chip" th:text="${item.store}"></span>
-                    <div class="head-title" th:text="${item.title}"></div>
+                    <div class="head-title">
+                        <a th:href="${item.url}" target="_blank" rel="noopener noreferrer"
+                           th:text="${item.title}"></a>
+                    </div>
                     <div class="head-price" th:text="${item.price} + ' ₽'"></div>
                     <span class="badge ok" th:if="${item.productId == result.winnerId}">ЛУЧШЕЕ ЗА ЦЕНУ</span>
                     <span class="badge" th:if="${item.demo}">ДЕМО-ЦЕНА</span>

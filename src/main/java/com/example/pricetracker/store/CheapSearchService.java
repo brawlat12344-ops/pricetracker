@@ -124,7 +124,7 @@ public class CheapSearchService {
         CheaperItem winner = items.get(0);
         int discount = winner.discountPercent();
         String verdict = String.format(
-                "Дешевле и не хуже по комплектации: %s — %s ₽ (на %d%% ниже исходных %s ₽), "
+                "Лучшее предложение: %s — %s ₽ (на %d%% ниже исходных %s ₽), "
                         + "%.1f баллов за конфигурацию и %.2f балла за 1000 ₽. "
                         + "Подходящих вариантов: %d, отклонено: %d.",
                 winner.title(), winner.price(), discount, source.price(), winner.score(),
