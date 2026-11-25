@@ -51,40 +51,7 @@ services:
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       ACCESS_TOKEN_TTL_MINUTES: ${ACCESS_TOKEN_TTL_MINUTES:-120}
-      POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-60000}
-      PRICE_PROVIDER: ${PRICE_PROVIDER:-mock}
       SPEC_PROVIDER: ${SPEC_PROVIDER:-mock}
-      ANALOG_WEB_SEARCH: ${ANALOG_WEB_SEARCH:-false}
-      MOCK_BASE_PRICE: ${MOCK_BASE_PRICE:-8990}
-    depends_on:
-      db:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: [ "CMD", "wget", "-qO-", "http://127.0.0.1:8080/actuator/health" ]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-      start_period: 30s
-    networks: [ appnet ]
-
-  worker:
-    build:
-      context: .
-      dockerfile: services/worker/Dockerfile
-    container_name: pt-worker
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-pricetracker}
-      DATABASE_USER: ${POSTGRES_USER:-ptuser}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
-      POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-60000}
-      PRICE_PROVIDER: ${PRICE_PROVIDER:-mock}
-      SPEC_PROVIDER: ${SPEC_PROVIDER:-mock}
-      ANALOG_WEB_SEARCH: ${ANALOG_WEB_SEARCH:-false}
-      MOCK_BASE_PRICE: ${MOCK_BASE_PRICE:-8990}
     depends_on:
       db:
         condition: service_healthy

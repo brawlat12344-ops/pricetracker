@@ -3,19 +3,12 @@ package com.example.pricetracker.store;
 import com.example.pricetracker.compare.CategoryCatalog;
 import com.example.pricetracker.compare.ComparisonService;
 import com.example.pricetracker.compare.ComparisonService.Evaluation;
-import com.example.pricetracker.domain.Product;
 import com.example.pricetracker.dto.CheaperItem;
 import com.example.pricetracker.dto.CheaperRequest;
 import com.example.pricetracker.dto.CheaperResponse;
 import com.example.pricetracker.provider.HtmlPriceProvider;
 import com.example.pricetracker.provider.SpecProviderRegistry;
-import com.example.pricetracker.repo.ProductRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -29,7 +22,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -47,9 +39,6 @@ public class CheapSearchService {
     private final ComparisonService comparisons;
     private final SpecProviderRegistry specProviders;
     private final HtmlPriceProvider htmlPrice;
-    private final ProductRepository products;
-    private final NamedParameterJdbcTemplate jdbc;
-    private final ObjectMapper mapper;
 
     public CheapSearchService(StoreRegistry stores,
                               StoreOffersSource offersSource,
@@ -60,10 +49,7 @@ public class CheapSearchService {
                               CategoryCatalog catalog,
                               ComparisonService comparisons,
                               SpecProviderRegistry specProviders,
-                              HtmlPriceProvider htmlPrice,
-                              ProductRepository products,
-                              NamedParameterJdbcTemplate jdbc,
-                              ObjectMapper mapper) {
+                              HtmlPriceProvider htmlPrice) {
         this.stores = stores;
         this.offersSource = offersSource;
         this.demoSource = demoSource;
@@ -74,12 +60,9 @@ public class CheapSearchService {
         this.comparisons = comparisons;
         this.specProviders = specProviders;
         this.htmlPrice = htmlPrice;
-        this.products = products;
-        this.jdbc = jdbc;
-        this.mapper = mapper;
     }
 
-    public CheaperResponse find(UUID userId, CheaperRequest request) {
+    public CheaperResponse find(CheaperRequest request) {
         String category = request.categoryOrPc();
         if (!catalog.exists(category)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Неизвестная категория: " + category);
@@ -90,7 +73,7 @@ public class CheapSearchService {
 
         String query = queryExtractor.extract(url, request.title());
         StoreRegistry.Store store = stores.detect(host(url));
-        SourceCard source = resolveSource(userId, url, category, query, request.title(), warnings);
+        SourceCard source = resolveSource(url, category, query, request.title(), warnings);
 
         List<CheaperItem> items = new ArrayList<>();
         Set<String> seen = new HashSet<>();
@@ -178,19 +161,9 @@ public class CheapSearchService {
         return 0;
     }
 
-    private SourceCard resolveSource(UUID userId, String url, String category, String query,
+    private SourceCard resolveSource(String url, String category, String query,
                                      String title, List<String> warnings) {
         String name = title == null || title.isBlank() ? query : title.trim();
-
-        Optional<Product> tracked = products.findByUserIdAndUrl(userId, url);
-        if (tracked.isPresent()) {
-            Product product = tracked.get();
-            Map<String, String> specs = parse(product.getAttributes());
-            BigDecimal price = latestPrice(product.getId());
-            if (price != null && !specs.isEmpty()) {
-                return new SourceCard(name, price, specs);
-            }
-        }
 
         Map<String, String> specs = new LinkedHashMap<>();
         try {
@@ -223,25 +196,6 @@ public class CheapSearchService {
                     + ") — оценена по комплектации.");
         }
         return new SourceCard(name, price, specs);
-    }
-
-    private BigDecimal latestPrice(UUID productId) {
-        return jdbc.query(
-                "SELECT price FROM price_snapshots WHERE product_id = :productId ORDER BY captured_at DESC LIMIT 1",
-                new MapSqlParameterSource("productId", productId),
-                rs -> rs.next() ? rs.getBigDecimal(1) : null);
-    }
-
-    private Map<String, String> parse(String json) {
-        if (json == null || json.isBlank()) {
-            return Map.of();
-        }
-        try {
-            return mapper.readValue(json, new TypeReference<Map<String, String>>() {
-            });
-        } catch (JsonProcessingException e) {
-            return Map.of();
-        }
     }
 
     private String validateUrl(String raw) {

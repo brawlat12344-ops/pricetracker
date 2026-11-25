@@ -32,11 +32,7 @@ jwt:
   ttl-minutes: ${ACCESS_TOKEN_TTL_MINUTES:120}
 
 pricetracker:
-  provider: ${PRICE_PROVIDER:mock}
   spec-provider: ${SPEC_PROVIDER:mock}
-  analog-web-search: ${ANALOG_WEB_SEARCH:false}
-  poll-interval-ms: ${POLL_INTERVAL_MS:60000}
-  mock-base-price: ${MOCK_BASE_PRICE:8990}
 
 management:
   endpoints:

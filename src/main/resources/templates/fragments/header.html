@@ -4,13 +4,11 @@
 <body>
 <header th:fragment="header(title)">
     <div class="brand">
-        <h1 th:text="${title}">PriceTracker</h1>
-        <div class="muted">Цены, история и алерты в одном месте</div>
+        <h1 th:text="${title}">Найти дешевле</h1>
+        <div class="muted">Та же конфигурация — меньшая цена</div>
     </div>
     <nav class="nav" aria-label="Основная навигация">
-        <a th:href="@{/}" th:classappend="${activeNav == 'products'} ? 'active' : ''">Товары</a>
-        <a th:href="@{/analogs}" th:classappend="${activeNav == 'analogs'} ? 'active' : ''">Поиск аналогов</a>
-        <a th:href="@{/cheaper}" th:classappend="${activeNav == 'cheaper'} ? 'active' : ''">Найти дешевле</a>
+        <a th:href="@{/cheaper}" class="active">Найти дешевле</a>
     </nav>
     <form class="logout-form" th:action="@{/logout}" method="post">
         <button class="secondary" type="submit">Выйти</button>
