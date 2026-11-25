@@ -39,13 +39,13 @@
                            th:value="${cheaperLimit}">
                 </div>
             </div>
-            <p style="margin-top:12px">
-                <label><input type="radio" name="crossStore" value="true"
-                              th:checked="${cheaperCrossStore}"> Искать во всех магазинах</label>
-                <label style="margin-left:16px"><input type="radio" name="crossStore" value="false"
-                                                       th:checked="${!cheaperCrossStore}"> Только магазин из ссылки</label>
-            </p>
-            <p style="margin-top:14px"><button type="submit">Найти дешевле</button></p>
+            <div class="toolbar" style="margin-top:12px">
+                <label class="inline-choice"><input type="radio" name="crossStore" value="true"
+                                                    th:checked="${cheaperCrossStore}"> Искать во всех магазинах</label>
+                <label class="inline-choice"><input type="radio" name="crossStore" value="false"
+                                                    th:checked="${!cheaperCrossStore}"> Только магазин из ссылки</label>
+            </div>
+            <div class="form-actions"><button type="submit">Найти дешевле</button></div>
         </form>
     </div>
 
@@ -62,7 +62,7 @@
 
         <div th:if="${!result.warnings.isEmpty()}">
             <strong>Предупреждения:</strong>
-            <ul>
+            <ul class="warning-list">
                 <li class="muted" th:each="warning : ${result.warnings}" th:text="${warning}"></li>
             </ul>
         </div>
@@ -70,7 +70,7 @@
         <h3>Дешевле и не хуже по комплектации</h3>
         <p class="muted">Клик по названию открывает магазин в новой вкладке: у реальных карточек —
             страницу товара, у демо-вариантов — поиск этой же конфигурации в магазине.</p>
-        <ul>
+        <ul class="offer-list">
             <li th:each="item : ${result.items}">
                 <span class="badge ok" th:text="${item.store}"></span>
                 <a th:href="${item.url}" target="_blank" rel="noopener noreferrer"

@@ -33,14 +33,14 @@
                 </select>
             </div>
         </div>
-        <p style="margin-top:14px"><button type="submit">Добавить</button></p>
+        <div class="form-actions"><button type="submit">Добавить</button></div>
         <p class="muted">Характеристики подтянутся из ссылки: JSON-LD, meta-теги или эвристики. Для демо можно оставить mock-провайдер.</p>
     </form>
 
     <div class="card">
         <h2>Отслеживаемые товары</h2>
-        <form method="get" th:action="@{/}" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
-            <div style="min-width:220px">
+        <form class="toolbar" method="get" th:action="@{/}">
+            <div>
                 <label for="filterCategory">Фильтр по теме</label>
                 <select id="filterCategory" name="category">
                     <option value="">Все категории</option>
@@ -51,6 +51,7 @@
             <button type="submit">Показать</button>
         </form>
         <form id="compareForm" method="get" th:action="@{/compare}"></form>
+        <div class="table-wrap">
         <table>
             <thead>
             <tr>
@@ -73,11 +74,11 @@
                     <span class="badge ok" th:unless="${p.unreadAlerts > 0}">0</span>
                 </td>
                 <td>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <div class="actions">
                         <form method="post" th:action="@{/web/products/{id}/poll(id=${p.id})}">
                             <button type="submit">Опросить</button>
                         </form>
-                        <a th:href="@{/product/{id}(id=${p.id})}"><button class="secondary" type="button">График</button></a>
+                        <a class="btn secondary" th:href="@{/product/{id}(id=${p.id})}">График</a>
                         <form method="post" th:action="@{/web/products/{id}/delete(id=${p.id})}">
                             <button class="danger" type="submit">Удалить</button>
                         </form>
@@ -86,22 +87,23 @@
             </tr>
             </tbody>
         </table>
-        <p style="margin-top:12px"><button type="submit" form="compareForm">Сравнить выбранные (2–4)</button></p>
-        <p class="muted" th:if="${products.isEmpty()}">Список пуст. Добавьте первый товар.</p>
-        <div style="margin-top:16px;display:flex;gap:12px;align-items:center">
-            <a th:if="${page > 0}" th:href="@{/(page=${page - 1},category=${category})}"><button class="secondary">← Назад</button></a>
-            <span class="muted" th:text="'Страница ' + (${page} + 1) + ' из ' + ${totalPages} + ' · товаров: ' + ${total}"></span>
-            <a th:if="${page + 1 < totalPages}" th:href="@{/(page=${page + 1},category=${category})}"><button class="secondary">Вперёд →</button></a>
         </div>
+        <div class="form-actions"><button type="submit" form="compareForm">Сравнить выбранные (2–4)</button></div>
+        <p class="muted" th:if="${products.isEmpty()}">Список пуст. Добавьте первый товар.</p>
+        <nav class="pager" style="margin-top:16px">
+            <a class="btn secondary" th:if="${page > 0}" th:href="@{/(page=${page - 1},category=${category})}">← Назад</a>
+            <span class="muted" th:text="'Страница ' + (${page} + 1) + ' из ' + ${totalPages} + ' · товаров: ' + ${total}"></span>
+            <a class="btn secondary" th:if="${page + 1 < totalPages}" th:href="@{/(page=${page + 1},category=${category})}">Вперёд →</a>
+        </nav>
     </div>
 
     <div class="card">
         <h2>Непрочитанные алерты</h2>
         <p class="muted" th:if="${alerts.isEmpty()}">Непрочитанных алертов нет.</p>
-        <div th:each="a : ${alerts}" style="display:flex;gap:12px;align-items:center;padding:8px 0">
+        <div class="alert-row" th:each="a : ${alerts}">
             <span class="badge" th:text="'↓ ' + ${a.price} + ' ₽'"></span>
             <span th:text="${a.title} + ' — порог ' + ${a.threshold} + ' ₽'"></span>
-            <form method="post" th:action="@{/web/alerts/{id}/read(id=${a.id})}" style="margin-left:auto">
+            <form method="post" th:action="@{/web/alerts/{id}/read(id=${a.id})}">
                 <button class="secondary" type="submit">Прочитано</button>
             </form>
         </div>

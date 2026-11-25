@@ -37,11 +37,11 @@
                            th:value="${analogLimit}">
                 </div>
             </div>
-            <label style="display:block;margin-top:12px">
+            <label class="inline-choice" style="margin-top:12px">
                 <input type="checkbox" name="web" value="true" th:checked="${analogWeb}">
                 Искать в интернете (DuckDuckGo HTML). Без галочки — только демо-каталог.
             </label>
-            <p style="margin-top:14px"><button type="submit">Найти и сравнить</button></p>
+            <div class="form-actions"><button type="submit">Найти и сравнить</button></div>
         </form>
         <p class="muted">Найденные карточки не добавляются в отслеживание: это разовый отчёт.
             Сравнение делит баллы за комплектацию на актуальную цену каждой карточки.</p>
@@ -56,13 +56,13 @@
 
         <div th:if="${!result.warnings.isEmpty()}">
             <strong>Предупреждения:</strong>
-            <ul>
+            <ul class="warning-list">
                 <li class="muted" th:each="warning : ${result.warnings}" th:text="${warning}"></li>
             </ul>
         </div>
 
         <h3>Карточки-аналоги</h3>
-        <ul>
+        <ul class="offer-list">
             <li th:each="item : ${result.items}">
                 <a th:href="${item.url}" target="_blank" rel="noopener noreferrer"
                    th:text="${item.title}"></a>

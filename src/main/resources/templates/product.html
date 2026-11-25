@@ -12,13 +12,13 @@
             <h1 th:text="${product.title}">Товар</h1>
             <div class="muted" th:text="${product.url}"></div>
         </div>
-        <a th:href="@{/}"><button class="secondary">← К списку</button></a>
+        <a class="btn secondary" th:href="@{/}">← К списку</a>
     </header>
 
     <p class="muted" th:if="${message}" th:text="${message}"></p>
 
     <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="row between">
             <h2>График цены (по дням)</h2>
             <form method="post" th:action="@{/web/products/{id}/poll(id=${product.id})}">
                 <button type="submit">Опросить сейчас</button>
@@ -30,10 +30,10 @@
     <div class="card">
         <h2>Алерты товара</h2>
         <p class="muted" th:if="${alerts.isEmpty()}">Алертов нет.</p>
-        <div th:each="a : ${alerts}" style="display:flex;gap:12px;align-items:center;padding:8px 0">
+        <div class="alert-row" th:each="a : ${alerts}">
             <span class="badge" th:text="'↓ ' + ${a.price} + ' ₽'"></span>
             <span th:text="'Порог ' + ${a.threshold} + ' ₽'"></span>
-            <form method="post" th:action="@{/web/alerts/{id}/read(id=${a.id})}" style="margin-left:auto">
+            <form method="post" th:action="@{/web/alerts/{id}/read(id=${a.id})}">
                 <button class="secondary" type="submit">Прочитано</button>
             </form>
         </div>

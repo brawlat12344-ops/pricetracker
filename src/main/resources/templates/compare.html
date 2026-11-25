@@ -13,7 +13,7 @@
         <h2>Вердикт</h2>
         <p th:text="${result.verdict}"></p>
         <p class="muted" th:text="'Категория: ' + ${result.categoryLabel}"></p>
-        <a th:href="@{/}"><button class="secondary" type="button">← К списку товаров</button></a>
+        <a class="btn secondary" th:href="@{/}">← К списку товаров</a>
     </div>
 
     <div class="card">

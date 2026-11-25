@@ -108,6 +108,7 @@ public class WebController {
         model.addAttribute("category", category == null ? "" : category);
         model.addAttribute("alerts", alerts);
         model.addAttribute("categories", categories.definitions());
+        model.addAttribute("activeNav", "products");
         Object flashError = redirect.getFlashAttributes().get("error");
         model.addAttribute("error", flashError == null ? "" : flashError);
         return "products";
@@ -126,6 +127,7 @@ public class WebController {
                 .filter(a -> a.productId().equals(id))
                 .toList();
         model.addAttribute("product", product);
+        model.addAttribute("activeNav", "products");
         model.addAttribute("chartSvg", chart.render(points));
         model.addAttribute("snapshots", snapshots);
         model.addAttribute("alerts", alerts);
@@ -184,6 +186,7 @@ public class WebController {
         try {
             CompareResponse result = comparisons.compare(principal.id(), new CompareRequest(ids, null));
             model.addAttribute("result", result);
+            model.addAttribute("activeNav", "products");
             return "compare";
         } catch (Exception ex) {
             redirect.addFlashAttribute("error", "Не удалось сравнить: " + ex.getMessage());
@@ -200,6 +203,7 @@ public class WebController {
                           @AuthenticationPrincipal UserIdPrincipal principal,
                           Model model) {
         model.addAttribute("categories", categories.definitions());
+        model.addAttribute("activeNav", "analogs");
         model.addAttribute("analogUrl", url == null ? "" : url);
         model.addAttribute("analogCategory", category);
         model.addAttribute("analogTitle", title == null ? "" : title);
@@ -229,6 +233,7 @@ public class WebController {
                           @AuthenticationPrincipal UserIdPrincipal principal,
                           Model model) {
         model.addAttribute("categories", categories.definitions());
+        model.addAttribute("activeNav", "cheaper");
         model.addAttribute("cheaperUrl", url == null ? "" : url);
         model.addAttribute("cheaperCategory", category);
         model.addAttribute("cheaperTitle", title == null ? "" : title);

@@ -3,16 +3,16 @@
 <head><meta charset="UTF-8"></head>
 <body>
 <header th:fragment="header(title)">
-    <div>
+    <div class="brand">
         <h1 th:text="${title}">PriceTracker</h1>
         <div class="muted">Цены, история и алерты в одном месте</div>
     </div>
-    <nav style="display:flex;gap:10px;align-items:center">
-        <a th:href="@{/}">Товары</a>
-        <a th:href="@{/analogs}">Поиск аналогов</a>
-        <a th:href="@{/cheaper}">Найти дешевле</a>
+    <nav class="nav" aria-label="Основная навигация">
+        <a th:href="@{/}" th:classappend="${activeNav == 'products'} ? 'active' : ''">Товары</a>
+        <a th:href="@{/analogs}" th:classappend="${activeNav == 'analogs'} ? 'active' : ''">Поиск аналогов</a>
+        <a th:href="@{/cheaper}" th:classappend="${activeNav == 'cheaper'} ? 'active' : ''">Найти дешевле</a>
     </nav>
-    <form th:action="@{/logout}" method="post">
+    <form class="logout-form" th:action="@{/logout}" method="post">
         <button class="secondary" type="submit">Выйти</button>
     </form>
 </header>
