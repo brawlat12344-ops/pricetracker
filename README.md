@@ -1,5 +1,7 @@
 # PriceTracker — Java-версия
 
+![PriceTracker — тёмный баннер](docs/assets/pricetracker-banner.png)
+
 Stack: **Java 17 + Spring Boot 3.3 + Thymeleaf + Flyway + PostgreSQL 16 + nginx**.
 Python, Node.js и Next.js удалены полностью: график рисуется сервером как SVG, UI — серверные шаблоны.
 
