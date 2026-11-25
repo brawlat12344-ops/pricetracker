@@ -12,8 +12,8 @@
 | Метод | Путь | Описание |
 |---|---|---|
 | `GET` | `/`, `/?page=N&category=laptop` | Список товаров с пагинацией, фильтром темы и алертами |
-| `GET` | `/login`, `/register` | Страницы входа и регистрации |
-| `POST` | `/login`, `/register`, `/logout` | Формы, httpOnly-cookie `pricetracker_token` |
+| `GET` | `/login` | Страница входа (регистрации нет) |
+| `POST` | `/login`, `/logout` | Формы, httpOnly-cookie `pricetracker_token` |
 | `GET` | `/product/{id}` | Страница товара с SVG-графиком |
 | `GET` | `/compare?ids=<uuid>&ids=<uuid>` | Сравнение 2–4 товаров одной темы |
 | `POST` | `/web/products` | Добавить товар (поля `url`, `title`, `alertThreshold`, `category`) |
@@ -25,8 +25,7 @@
 
 | Метод | Путь | Описание |
 |---|---|---|
-| `POST` | `/api/auth/register` | Регистрация → `access_token` |
-| `POST` | `/api/auth/login` | Вход → `access_token` |
+| `POST` | `/api/auth/login` | Вход → `access_token`; демо: `demo@example.com / demopass123` |
 | `GET` | `/api/categories` | Темы и веса характеристик |
 | `GET` | `/api/products` | Список, `page`, `size`, `category` |
 | `POST` | `/api/products` | Создать товар (`category`, опционально `attributes`) |

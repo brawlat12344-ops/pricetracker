@@ -37,12 +37,6 @@ public class ApiController {
         this.comparisons = comparisons;
     }
 
-    @PostMapping("/auth/register")
-    public ResponseEntity<TokenResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(auth.register(request.email(), request.password()));
-    }
-
     @PostMapping("/auth/login")
     public TokenResponse login(@Valid @RequestBody LoginRequest request) {
         return auth.login(request.email(), request.password());

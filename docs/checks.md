@@ -59,22 +59,24 @@ docker exec -it pt-db psql -U ptuser -d pricetracker -c "SELECT version, descrip
 ---------+-------------+---------
  1       | init        | t
  2       | compare     | t
+ 3       | demo_users  | t
 ```
 
 `V2__compare.sql` добавляет `products.category`, `products.attributes` (JSONB)
-и таблицу `comparisons` для сохранённых сравнений.
+и таблицу `comparisons` для сохранённых сравнений. `V3__demo_users.sql` создаёт два демо-аккаунта.
 
-## 5. Регистрация и сценарий через curl
+## 5. Вход и сценарий через curl
 
 ```powershell
 $base = "http://localhost/api"
 
-$token = (curl.exe -s -X POST "$base/auth/register" `
+$token = (curl.exe -s -X POST "$base/auth/login" `
   -H "Content-Type: application/json" `
-  -d '{"email":"test@mail.ru","password":"qwerty123"}' | ConvertFrom-Json).access_token
+  -d '{"email":"demo@example.com","password":"demopass123"}' | ConvertFrom-Json).access_token
 ```
 
-Ответ содержит `access_token` — токен сохранён в переменной `$token`.
+Регистрации нет: аккаунты создаются миграцией `V3__demo_users.sql`. Второй вариант входа —
+`student@example.com` / `qwerty123`. Ответ содержит `access_token` — токен сохранён в `$token`.
 
 ```powershell
 $product = curl.exe -s -X POST "$base/products" `

@@ -26,16 +26,6 @@ public class AuthService {
         this.jwt = jwt;
     }
 
-    @Transactional
-    public TokenResponse register(String email, String password) {
-        String normalized = normalize(email);
-        if (users.existsByEmail(normalized)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered");
-        }
-        User user = users.save(new User(normalized, encoder.encode(password)));
-        return TokenResponse.of(jwt.issue(user.getId()));
-    }
-
     public TokenResponse login(String email, String password) {
         User user = users.findByEmail(normalize(email))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));

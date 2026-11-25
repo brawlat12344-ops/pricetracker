@@ -32,6 +32,10 @@ docker compose ps -a
 
 Открыть: **http://localhost**
 
+**Регистрация закрыта.** Вход по готовым аккаунтам из миграции `V3__demo_users.sql`:
+- `demo@example.com` / `demopass123`
+- `student@example.com` / `qwerty123`
+
 ## Быстрый запуск одним кликом (Windows)
 
 Двойной клик по `PriceTracker.exe` в корне проекта:
@@ -79,7 +83,7 @@ docker compose ps -a
 Сравнение берёт 2–4 товара одной темы, считает баллы по весам характеристик,
 делит их на актуальную цену из карточки и выдаёт вердикт «что лучше за эти деньги».
 
-Демо-сценарий: зарегистрироваться → добавить два ноутбука → отметить их чекбоксами
+Демо-сценарий: войти под демо-аккаунтом → добавить два ноутбука → отметить их чекбоксами
 → «Сравнить выбранные» → увидеть таблицу CPU/RAM/экрана и вердикт.
 Отдельно можно проверить цены: «Опросить» → алерт → график → повторный опрос в ту же минуту
 не создаёт дубль.
@@ -162,7 +166,7 @@ UI: главная → фильтр по теме → чекбоксы 2–4 т�
 ## Демо через curl
 
 ```powershell
-$token = (curl.exe -s -X POST http://localhost/api/auth/register `
+$token = (curl.exe -s -X POST http://localhost/api/auth/login `
   -H "Content-Type: application/json" `
   -d '{"email":"demo@example.com","password":"demopass123"}' | ConvertFrom-Json).access_token
 
@@ -184,7 +188,7 @@ curl.exe -s "http://localhost/api/alerts" -H "Authorization: Bearer $token"
 
 | Метод | Путь | Назначение |
 |---|---|---|
-| `POST` | `/api/auth/register`, `/api/auth/login` | токен `access_token` |
+| `POST` | `/api/auth/login` | токен `access_token` (регистрации нет) |
 | `GET` | `/api/categories` | темы и веса характеристик |
 | `GET/POST` | `/api/products` | список с пагинацией и фильтром `?category=pc` / создать |
 | `GET/PATCH/DELETE` | `/api/products/{id}` | получить / изменить / удалить |

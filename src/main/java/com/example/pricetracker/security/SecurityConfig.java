@@ -23,8 +23,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/actuator/health", "/actuator/health/**",
-                                "/login", "/register", "/logout",
-                                "/api/auth/**", "/style.css", "/waves.svg", "/favicon.ico", "/error")
+                                "/login", "/logout",
+                                "/api/auth/login", "/style.css", "/waves.svg", "/favicon.ico", "/error")
                         .permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, failure) -> {

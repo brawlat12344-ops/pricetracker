@@ -78,27 +78,6 @@ public class WebController {
         }
     }
 
-    @GetMapping("/register")
-    public String registerPage(Model model) {
-        model.addAttribute("error", "");
-        return "register";
-    }
-
-    @PostMapping("/register")
-    public String register(@RequestParam String email,
-                           @RequestParam String password,
-                           HttpServletResponse response,
-                           Model model) {
-        try {
-            TokenResponse token = auth.register(email, password);
-            AuthCookie.set(response, token.accessToken(), ttlSeconds);
-            return "redirect:/";
-        } catch (ResponseStatusException ex) {
-            model.addAttribute("error", "Этот email уже зарегистрирован или пароль слишком короткий");
-            return "register";
-        }
-    }
-
     @GetMapping("/")
     public String home(@RequestParam(defaultValue = "0") int page,
                        @RequestParam(required = false) String category,
