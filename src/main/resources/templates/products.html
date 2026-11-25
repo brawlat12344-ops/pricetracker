@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>PriceTracker</title>
+    <link rel="stylesheet" th:href="@{/style.css}">
+</head>
+<body>
+<main>
+    <div th:replace="~{fragments/header :: header('PriceTracker')}"></div>
+
+    <p class="error" th:if="${error}" th:text="${error}"></p>
+
+    <form class="card" method="post" th:action="@{/web/products}">
+        <h2>Добавить товар</h2>
+        <div class="grid">
+            <div>
+                <label for="url">URL товара</label>
+                <input id="url" name="url" type="url" placeholder="https://shop.example/product/42" required>
+            </div>
+            <div>
+                <label for="title">Название</label>
+                <input id="title" name="title" placeholder="Кроссовки X" required>
+            </div>
+            <div>
+                <label for="threshold">Целевая цена, ₽</label>
+                <input id="threshold" name="alertThreshold" type="number" min="1" step="0.01" value="9500" required>
+            </div>
+        </div>
+        <p style="margin-top:14px"><button type="submit">Добавить</button></p>
+        <p class="muted">Любой корректный http(s)-URL — цену вернёт mock-провайдер.</p>
+    </form>
+
+    <div class="card">
+        <h2>Отслеживаемые товары</h2>
+        <table>
+            <thead>
+            <tr><th>Название</th><th>Последняя цена</th><th>Порог</th><th>Алерты</th><th>Действия</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="p : ${products}">
+                <td>
+                    <a th:href="@{/product/{id}(id=${p.id})}" th:text="${p.title}"></a>
+                    <div class="muted" th:text="${p.url}"></div>
+                </td>
+                <td th:text="${p.latestPrice != null ? p.latestPrice + ' ₽' : '—'}"></td>
+                <td th:text="${p.alertThreshold + ' ₽'}"></td>
+                <td>
+                    <span class="badge" th:if="${p.unreadAlerts > 0}" th:text="${p.unreadAlerts + ' новых'}"></span>
+                    <span class="badge ok" th:unless="${p.unreadAlerts > 0}">0</span>
+                </td>
+                <td>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <form method="post" th:action="@{/web/products/{id}/poll(id=${p.id})}">
+                            <button type="submit">Опросить</button>
+                        </form>
+                        <a th:href="@{/product/{id}(id=${p.id})}"><button class="secondary" type="button">График</button></a>
+                        <form method="post" th:action="@{/web/products/{id}/delete(id=${p.id})}">
+                            <button class="danger" type="submit">Удалить</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="muted" th:if="${products.isEmpty()}">Список пуст. Добавьте первый товар.</p>
+        <div style="margin-top:16px;display:flex;gap:12px;align-items:center">
+            <a th:if="${page > 0}" th:href="@{/(page=${page - 1})}"><button class="secondary">← Назад</button></a>
+            <span class="muted" th:text="'Страница ' + (${page} + 1) + ' из ' + ${totalPages} + ' · товаров: ' + ${total}"></span>
+            <a th:if="${page + 1 < totalPages}" th:href="@{/(page=${page + 1})}"><button class="secondary">Вперёд →</button></a>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Непрочитанные алерты</h2>
+        <p class="muted" th:if="${alerts.isEmpty()}">Непрочитанных алертов нет.</p>
+        <div th:each="a : ${alerts}" style="display:flex;gap:12px;align-items:center;padding:8px 0">
+            <span class="badge" th:text="'↓ ' + ${a.price} + ' ₽'"></span>
+            <span th:text="${a.title} + ' — порог ' + ${a.threshold} + ' ₽'"></span>
+            <form method="post" th:action="@{/web/alerts/{id}/read(id=${a.id})}" style="margin-left:auto">
+                <button class="secondary" type="submit">Прочитано</button>
+            </form>
+        </div>
+    </div>
+</main>
+</body>
+</html>

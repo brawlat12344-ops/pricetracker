@@ -1,0 +1,6 @@
+# One-shot migration container: tables do not exist yet, so Hibernate
+# must not run schema validation before Flyway has applied V1__init.sql.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: none

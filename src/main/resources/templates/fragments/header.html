@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"></head>
+<body>
+<header th:fragment="header(title)">
+    <div>
+        <h1 th:text="${title}">PriceTracker</h1>
+        <div class="muted">Цены, история и алерты в одном месте</div>
+    </div>
+    <form th:action="@{/logout}" method="post">
+        <button class="secondary" type="submit">Выйти</button>
+    </form>
+</header>
+</body>
+</html>
