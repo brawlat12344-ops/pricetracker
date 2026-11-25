@@ -1,6 +1,10 @@
 package com.example.pricetracker.web;
 
+import com.example.pricetracker.compare.CategoryCatalog;
+import com.example.pricetracker.compare.ComparisonService;
 import com.example.pricetracker.dto.AlertResponse;
+import com.example.pricetracker.dto.CompareRequest;
+import com.example.pricetracker.dto.CompareResponse;
 import com.example.pricetracker.dto.PollResponse;
 import com.example.pricetracker.dto.ProductResponse;
 import com.example.pricetracker.dto.SnapshotResponse;
@@ -34,16 +38,22 @@ public class WebController {
     private final StatsService stats;
     private final ChartSvgService chart;
     private final int ttlSeconds;
+    private final CategoryCatalog categories;
+    private final ComparisonService comparisons;
 
     public WebController(AuthService auth,
                          ProductService products,
                          StatsService stats,
                          ChartSvgService chart,
+                         CategoryCatalog categories,
+                         ComparisonService comparisons,
                          @Value("${jwt.ttl-minutes:120}") int ttlMinutes) {
         this.auth = auth;
         this.products = products;
         this.stats = stats;
         this.chart = chart;
+        this.categories = categories;
+        this.comparisons = comparisons;
         this.ttlSeconds = ttlMinutes * 60;
     }
 
@@ -91,15 +101,21 @@ public class WebController {
 
     @GetMapping("/")
     public String home(@RequestParam(defaultValue = "0") int page,
+                       @RequestParam(required = false) String category,
                        @AuthenticationPrincipal UserIdPrincipal principal,
-                       Model model) {
-        Page<ProductResponse> result = products.list(principal.id(), PageRequest.of(page, 20));
+                       Model model,
+                       RedirectAttributes redirect) {
+        Page<ProductResponse> result = products.list(principal.id(), PageRequest.of(page, 20), category);
         List<AlertResponse> alerts = products.alerts(principal.id(), PageRequest.of(0, 50)).items();
         model.addAttribute("products", result.getContent());
         model.addAttribute("total", result.getTotalElements());
         model.addAttribute("totalPages", result.getTotalPages());
         model.addAttribute("page", page);
+        model.addAttribute("category", category == null ? "" : category);
         model.addAttribute("alerts", alerts);
+        model.addAttribute("categories", categories.definitions());
+        Object flashError = redirect.getFlashAttributes().get("error");
+        model.addAttribute("error", flashError == null ? "" : flashError);
         return "products";
     }
 
@@ -128,11 +144,12 @@ public class WebController {
     public String addProduct(@RequestParam String url,
                              @RequestParam String title,
                              @RequestParam String alertThreshold,
+                             @RequestParam(defaultValue = "laptop") String category,
                              @AuthenticationPrincipal UserIdPrincipal principal,
                              RedirectAttributes redirect) {
         try {
             products.create(principal.id(), new com.example.pricetracker.dto.ProductRequest(
-                    url, title, new BigDecimal(alertThreshold)));
+                    url, title, new BigDecimal(alertThreshold), category, null));
         } catch (Exception ex) {
             redirect.addFlashAttribute("error", "Не удалось добавить товар: " + ex.getMessage());
         }
@@ -159,6 +176,25 @@ public class WebController {
                          @AuthenticationPrincipal UserIdPrincipal principal) {
         products.delete(principal.id(), id);
         return "redirect:/";
+    }
+
+    @GetMapping("/compare")
+    public String compare(@RequestParam(name = "ids", required = false) List<UUID> ids,
+                          @AuthenticationPrincipal UserIdPrincipal principal,
+                          Model model,
+                          RedirectAttributes redirect) {
+        if (ids == null || ids.size() < 2 || ids.size() > 4) {
+            redirect.addFlashAttribute("error", "Для сравнения выберите от 2 до 4 товаров.");
+            return "redirect:/";
+        }
+        try {
+            CompareResponse result = comparisons.compare(principal.id(), new CompareRequest(ids, null));
+            model.addAttribute("result", result);
+            return "compare";
+        } catch (Exception ex) {
+            redirect.addFlashAttribute("error", "Не удалось сравнить: " + ex.getMessage());
+            return "redirect:/";
+        }
     }
 
     @PostMapping("/web/alerts/{id}/read")

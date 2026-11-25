@@ -33,6 +33,7 @@ jwt:
 
 pricetracker:
   provider: ${PRICE_PROVIDER:mock}
+  spec-provider: ${SPEC_PROVIDER:mock}
   poll-interval-ms: ${POLL_INTERVAL_MS:60000}
   mock-base-price: ${MOCK_BASE_PRICE:8990}
 

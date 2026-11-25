@@ -12,6 +12,8 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     Page<Product> findByUserId(UUID userId, Pageable pageable);
 
+    Page<Product> findByUserIdAndCategory(UUID userId, String category, Pageable pageable);
+
     Optional<Product> findByIdAndUserId(UUID id, UUID userId);
 
     long countByUserId(UUID userId);

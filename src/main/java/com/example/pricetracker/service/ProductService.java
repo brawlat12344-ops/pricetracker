@@ -1,5 +1,6 @@
 package com.example.pricetracker.service;
 
+import com.example.pricetracker.compare.CategoryCatalog;
 import com.example.pricetracker.domain.Alert;
 import com.example.pricetracker.domain.Product;
 import com.example.pricetracker.dto.AlertResponse;
@@ -8,8 +9,12 @@ import com.example.pricetracker.dto.PollResponse;
 import com.example.pricetracker.dto.ProductPatchRequest;
 import com.example.pricetracker.dto.ProductRequest;
 import com.example.pricetracker.dto.ProductResponse;
+import com.example.pricetracker.provider.SpecProviderRegistry;
 import com.example.pricetracker.repo.AlertRepository;
 import com.example.pricetracker.repo.ProductRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -34,15 +39,27 @@ public class ProductService {
     private final AlertRepository alerts;
     private final PricingService pricing;
     private final NamedParameterJdbcTemplate jdbc;
+    private final SpecProviderRegistry specProviders;
+    private final CategoryCatalog catalog;
+    private final ObjectMapper mapper;
+    private final String specProviderName;
 
     public ProductService(ProductRepository products,
                           AlertRepository alerts,
                           PricingService pricing,
-                          NamedParameterJdbcTemplate jdbc) {
+                          NamedParameterJdbcTemplate jdbc,
+                          SpecProviderRegistry specProviders,
+                          CategoryCatalog catalog,
+                          ObjectMapper mapper,
+                          @Value("${pricetracker.spec-provider:mock}") String specProviderName) {
         this.products = products;
         this.alerts = alerts;
         this.pricing = pricing;
         this.jdbc = jdbc;
+        this.specProviders = specProviders;
+        this.catalog = catalog;
+        this.mapper = mapper;
+        this.specProviderName = specProviderName;
     }
 
     public Product owned(UUID userId, UUID productId) {
@@ -51,7 +68,13 @@ public class ProductService {
     }
 
     public Page<ProductResponse> list(UUID userId, Pageable pageable) {
-        Page<Product> page = products.findByUserId(userId, pageable);
+        return list(userId, pageable, null);
+    }
+
+    public Page<ProductResponse> list(UUID userId, Pageable pageable, String category) {
+        Page<Product> page = category == null || category.isBlank()
+                ? products.findByUserId(userId, pageable)
+                : products.findByUserIdAndCategory(userId, category.toLowerCase(), pageable);
         List<UUID> ids = page.getContent().stream().map(Product::getId).toList();
         Map<UUID, BigDecimal> latest = latestPrices(ids);
         Map<UUID, Long> unread = unreadCounts(ids);
@@ -68,8 +91,21 @@ public class ProductService {
     @Transactional
     public ProductResponse create(UUID userId, ProductRequest request) {
         validateUrl(request.url());
+        String category = request.categoryOrLaptop();
+        validateCategory(category);
+
+        Map<String, String> attributes = request.attributes();
+        if (attributes == null || attributes.isEmpty()) {
+            attributes = specProviders.get(specProviderName).fetch(request.url().trim(), category);
+        }
+
         Product saved = products.save(new Product(
-                userId, request.url().trim(), request.title().trim(), request.alertThreshold()));
+                userId,
+                request.url().trim(),
+                request.title().trim(),
+                request.alertThreshold(),
+                category,
+                toJson(attributes)));
         return toResponse(saved, null, 0L);
     }
 
@@ -84,6 +120,17 @@ public class ProductService {
         }
         if (patch.active() != null) {
             product.setActive(patch.active());
+        }
+        if (patch.category() != null && !patch.category().isBlank()) {
+            String category = patch.category().toLowerCase();
+            validateCategory(category);
+            product.setCategory(category);
+        }
+        if (patch.attributes() != null && !patch.attributes().isEmpty()) {
+            product.setAttributes(toJson(patch.attributes()));
+        } else if (patch.category() != null && !patch.category().isBlank()) {
+            product.setAttributes(toJson(
+                    specProviders.get(specProviderName).fetch(product.getUrl(), product.getCategory())));
         }
         return toResponse(product, null, 0L);
     }
@@ -142,8 +189,35 @@ public class ProductService {
     }
 
     private ProductResponse toResponse(Product p, BigDecimal latestPrice, long unread) {
-        return new ProductResponse(p.getId(), p.getTitle(), p.getUrl(), p.getAlertThreshold(),
+        return new ProductResponse(p.getId(), p.getTitle(), p.getUrl(), p.getCategory(),
+                fromJson(p.getAttributes()), p.getAlertThreshold(),
                 p.isActive(), p.getCreatedAt(), latestPrice, unread);
+    }
+
+    private void validateCategory(String category) {
+        if (!catalog.exists(category)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown category: " + category);
+        }
+    }
+
+    private String toJson(Map<String, String> attributes) {
+        try {
+            return mapper.writeValueAsString(attributes);
+        } catch (JsonProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Cannot store attributes", e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> fromJson(String json) {
+        if (json == null || json.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return mapper.readValue(json, Map.class);
+        } catch (JsonProcessingException e) {
+            return Map.of();
+        }
     }
 
     private Map<UUID, BigDecimal> latestPrices(List<UUID> ids) {

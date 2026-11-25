@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Сравнение — PriceTracker</title>
+    <link rel="stylesheet" th:href="@{/style.css}">
+</head>
+<body>
+<main>
+    <div th:replace="~{fragments/header :: header('Сравнение товаров')}"></div>
+
+    <div class="card">
+        <h2>Вердикт</h2>
+        <p th:text="${result.verdict}"></p>
+        <p class="muted" th:text="'Категория: ' + ${result.categoryLabel}"></p>
+        <a th:href="@{/}"><button class="secondary" type="button">← К списку товаров</button></a>
+    </div>
+
+    <div class="card">
+        <h2>Характеристики и цена из карточки</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Параметр</th>
+                <th>Вес</th>
+                <th th:each="item : ${result.items}">
+                    <span th:text="${item.title}"></span>
+                    <div class="muted" th:text="${item.price} + ' ₽'"></div>
+                </th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="attr : ${result.attributes}">
+                <td th:text="${attr.label}"></td>
+                <td th:text="${attr.weight} + '%'"></td>
+                <td th:each="item : ${result.items}"
+                    th:text="${item.attributes[attr.key] != null ? item.attributes[attr.key] : '—'}"></td>
+            </tr>
+            <tr>
+                <td><strong>Итоговые баллы</strong></td>
+                <td>100%</td>
+                <td th:each="item : ${result.items}" th:text="${item.roundedScore}"></td>
+            </tr>
+            <tr>
+                <td><strong>Баллов за 1000 ₽</strong></td>
+                <td>—</td>
+                <td th:each="item : ${result.items}" th:text="${item.roundedValue}"></td>
+            </tr>
+            <tr>
+                <td><strong>Результат</strong></td>
+                <td>—</td>
+                <td th:each="item : ${result.items}">
+                    <span class="badge ok" th:if="${item.productId == result.winnerId}">ЛУЧШЕЕ ЗА ЦЕНУ</span>
+                    <span class="muted" th:unless="${item.productId == result.winnerId}">—</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Не найденные характеристики</h2>
+        <p class="muted" th:if="${result.items[0].missingAttributes.isEmpty()}">Все характеристики распознаны.</p>
+        <div th:each="item : ${result.items}">
+            <p th:if="${!item.missingAttributes.isEmpty()}">
+                <strong th:text="${item.title}"></strong>:
+                <span th:text="${item.missingAttributes}"></span>
+            </p>
+        </div>
+    </div>
+</main>
+</body>
+</html>

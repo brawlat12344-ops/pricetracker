@@ -12,8 +12,8 @@
 |---|---|
 | Команда | `java -jar /app/app.jar --spring.profiles.active=migrate --spring.main.web-application-type=none` |
 | Источник миграций | `classpath:db/migration` |
-| Файл | `src/main/resources/db/migration/V1__init.sql` |
-| Результат | `flyway_schema_history`, таблицы `users`, `products`, `price_snapshots`, `alerts` |
+| Файлы | `V1__init.sql`, `V2__compare.sql` |
+| Результат | `flyway_schema_history`, таблицы `users`, `products`, `price_snapshots`, `alerts`, `comparisons` |
 | Код выхода | `0` — успех, `1` — ошибка |
 
 ## Что создаёт
@@ -22,7 +22,9 @@
 - уникальный индекс `uq_snapshot_product_period` — идемпотентность снимков;
 - B-tree `idx_snapshots_product_time`;
 - BRIN `idx_snapshots_captured_brin`;
-- partial-индексы `idx_alerts_unread`, `idx_alerts_product_unread`.
+- partial-индексы `idx_alerts_unread`, `idx_alerts_product_unread`;
+- колонки `products.category`, `products.attributes` (JSONB) и индекс `idx_products_user_category`;
+- таблицу `comparisons` с проверкой размера сравнения (2–4 товара) и индексом `idx_comparisons_user_created`.
 
 `application-migrate.yml` отключает JPA-валидацию схемы: на момент запуска таблиц ещё нет.
 

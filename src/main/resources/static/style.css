@@ -25,7 +25,7 @@ a { color:var(--accent); text-decoration:none; }
 .card { background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:20px; margin-bottom:20px; backdrop-filter:blur(8px); }
 .grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
 label { display:block; font-size:13px; color:var(--muted); margin-bottom:4px; }
-input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #475569; background:rgba(5,8,12,0.78); color:var(--text); }
+input, select { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #475569; background:rgba(5,8,12,0.78); color:var(--text); }
 button { padding:9px 14px; border-radius:8px; border:0; cursor:pointer; background:var(--accent); color:#04263a; font-weight:600; }
 button.secondary { background:#334155; color:var(--text); }
 button.danger { background:#7f1d1d; color:#fff; }

@@ -7,6 +7,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -29,6 +31,13 @@ public class Product {
     @Column(nullable = false)
     private String title;
 
+    @Column(nullable = false, length = 32)
+    private String category = "laptop";
+
+    @Column(nullable = false, columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private String attributes = "{}";
+
     @Column(name = "alert_threshold", nullable = false, precision = 12, scale = 2)
     private BigDecimal alertThreshold;
 
@@ -44,11 +53,14 @@ public class Product {
     public Product() {
     }
 
-    public Product(UUID userId, String url, String title, BigDecimal alertThreshold) {
+    public Product(UUID userId, String url, String title, BigDecimal alertThreshold,
+                   String category, String attributes) {
         this.userId = userId;
         this.url = url;
         this.title = title;
         this.alertThreshold = alertThreshold;
+        this.category = category;
+        this.attributes = attributes;
     }
 
     @PreUpdate
@@ -70,6 +82,14 @@ public class Product {
 
     public String getTitle() {
         return title;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public String getAttributes() {
+        return attributes;
     }
 
     public BigDecimal getAlertThreshold() {
@@ -94,6 +114,14 @@ public class Product {
 
     public void setAlertThreshold(BigDecimal alertThreshold) {
         this.alertThreshold = alertThreshold;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public void setAttributes(String attributes) {
+        this.attributes = attributes;
     }
 
     public void setActive(boolean active) {

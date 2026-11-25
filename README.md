@@ -21,6 +21,7 @@ JWT_SECRET=$jwtKey
 ACCESS_TOKEN_TTL_MINUTES=120
 POLL_INTERVAL_MS=60000
 PRICE_PROVIDER=mock
+SPEC_PROVIDER=mock
 MOCK_BASE_PRICE=8990
 APP_PORT=80
 "@ | Set-Content .env -Encoding utf8
@@ -53,8 +54,8 @@ docker compose ps -a
 | Сервис | Папка | Ответственность | Dockerfile | API |
 |---|---|---|---|---|
 | `db` | `services/db` | PostgreSQL 16, volume `db_data` | `services/db/Dockerfile` | SQL :5432 |
-| `migrate` | `services/migrate` | Flyway-миграции, one-shot | `services/migrate/Dockerfile` | CLI / Flyway |
-| `app` | `services/app` | REST API + Thymeleaf UI + SVG | `services/app/Dockerfile` | `/api/**`, `/actuator/**` |
+| `migrate` | `services/migrate` | Flyway-миграции V1 + V2, one-shot | `services/migrate/Dockerfile` | CLI / Flyway |
+| `app` | `services/app` | REST API + Thymeleaf UI + SVG + сравнение товаров | `services/app/Dockerfile` | `/api/**`, `/compare`, `/actuator/**` |
 | `worker` | `services/worker` | `@Scheduled` опрос цен | `services/worker/Dockerfile` | `/actuator/health`, `PollScheduler` |
 | `nginx` | `services/nginx` | reverse proxy, точка входа :80 | `services/nginx/Dockerfile` | `/`, `/api/` |
 
@@ -69,12 +70,18 @@ docker compose ps -a
 
 ## Задача и сценарий
 
-Система следит за ценами товаров: пользователь добавляет URL и целевую цену,
-воркер периодически опрашивает цену, история сохраняется в PostgreSQL,
-при цене ниже порога создаётся алерт, а график строится сервером как SVG.
+Система следит за ценами товаров и помогает выбрать лучший вариант по цене и комплектации.
+Пользователь добавляет URL, тему и целевую цену; характеристики подтягиваются из страницы
+товара (`mock` — стабильные демо-значения). Воркер периодически опрашивает цену, история
+сохраняется в PostgreSQL, при цене ниже порога создаётся алерт, график рисуется сервером как SVG.
 
-Демо-сценарий: зарегистрироваться → добавить товар с порогом 9500 → нажать «Опросить»
-→ увидеть цену и алерт → открыть график → убедиться, что повторный опрос в ту же минуту
+Поддерживаемые темы: **ноутбуки, телефоны, наушники, полные сборки ПК**.
+Сравнение берёт 2–4 товара одной темы, считает баллы по весам характеристик,
+делит их на актуальную цену из карточки и выдаёт вердикт «что лучше за эти деньги».
+
+Демо-сценарий: зарегистрироваться → добавить два ноутбука → отметить их чекбоксами
+→ «Сравнить выбранные» → увидеть таблицу CPU/RAM/экрана и вердикт.
+Отдельно можно проверить цены: «Опросить» → алерт → график → повторный опрос в ту же минуту
 не создаёт дубль.
 
 ## Архитектура
@@ -88,6 +95,10 @@ C4-схемы трёх уровней (Context, Container, Component): **[docs/c
 - app и worker → PostgreSQL через JDBC/JPA;
 - migrate → PostgreSQL через Flyway SQL один раз при старте;
 - app и worker → провайдер цены через интерфейс `PriceProvider` (mock или HTML/JSON-LD);
+- app → провайдер характеристик через интерфейс `SpecProvider`: `mock` или `html`
+  (JSON-LD `additionalProperty`, meta-теги, эвристики по тексту страницы);
+- `CategoryCatalog` хранит веса характеристик для четырёх тем, `ComparisonService` считает
+  «баллы за 1000 ₽» и сохраняет сравнение в таблице `comparisons`;
 - стартовый порядок задан `depends_on` с `condition`.
 
 ## Проверка результата
@@ -116,7 +127,7 @@ pt-worker    Up (healthy)
 
 ```powershell
 curl.exe http://localhost/actuator/health
-# {"status":"UP"}
+# {"status":"UP","groups":["liveness","readiness"]}
 ```
 
 ### 3. Логи воркера
@@ -134,8 +145,19 @@ docker compose logs -f app | Select-String "snapshot_created|snapshot_duplicate_
 # snapshot_duplicate_skipped product_id=... period_start=...
 ```
 
-Скриншоты для отчёта: страница «Отслеживаемые товары» с ценой и алертом,
-страница товара с SVG-графиком, вывод `docker compose ps -a` и вывод `curl /actuator/health`.
+### 5. Сравнение товаров
+
+```powershell
+$body = '{"productIds":["<id-1>","<id-2>"],"name":"Laptops: best for price"}'
+curl.exe -s -X POST http://localhost/api/compare -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" -d $body
+```
+
+UI: главная → фильтр по теме → чекбоксы 2–4 товаров → «Сравнить выбранные».
+
+Скриншоты для отчёта: страница «Отслеживаемые товары» с фильтром, ценой и алертом,
+страница товара с SVG-графиком, страница `/compare` с вердиктом,
+вывод `docker compose ps -a` и вывод `curl /actuator/health`.
 
 ## Демо через curl
 
@@ -146,7 +168,7 @@ $token = (curl.exe -s -X POST http://localhost/api/auth/register `
 
 $product = curl.exe -s -X POST http://localhost/api/products `
   -H "Authorization: Bearer $token" -H "Content-Type: application/json" `
-  -d '{"url":"https://shop.example/product/42","title":"Кроссовки X","alertThreshold":9500}' | ConvertFrom-Json
+  -d '{"url":"https://shop.example/product/42","title":"Кроссовки X","alertThreshold":9500,"category":"headphones"}' | ConvertFrom-Json
 
 $productId = $product.id
 
@@ -163,7 +185,8 @@ curl.exe -s "http://localhost/api/alerts" -H "Authorization: Bearer $token"
 | Метод | Путь | Назначение |
 |---|---|---|
 | `POST` | `/api/auth/register`, `/api/auth/login` | токен `access_token` |
-| `GET/POST` | `/api/products` | список с пагинацией / создать |
+| `GET` | `/api/categories` | темы и веса характеристик |
+| `GET/POST` | `/api/products` | список с пагинацией и фильтром `?category=pc` / создать |
 | `GET/PATCH/DELETE` | `/api/products/{id}` | получить / изменить / удалить |
 | `POST` | `/api/products/{id}/poll` | опросить цену |
 | `GET` | `/api/products/{id}/snapshots` | история снимков |
@@ -171,12 +194,17 @@ curl.exe -s "http://localhost/api/alerts" -H "Authorization: Bearer $token"
 | `GET` | `/api/stats/top-drops` | максимальное падение цены |
 | `GET` | `/api/alerts` | непрочитанные алерты |
 | `POST` | `/api/alerts/{id}/read` | отметить прочитанным |
+| `POST` | `/api/compare` | сравнить 2–4 товара одной темы |
+| `GET` | `/api/comparisons` | сохранённые сравнения |
 
 ## Важное
 
 - `docker compose down` сохраняет данные; `down -v` удаляет volume.
 - Секреты только в `.env`; `.env` в `.gitignore`.
 - JWT для браузера лежит в httpOnly-cookie; для API можно передавать `Authorization: Bearer`.
+- `SPEC_PROVIDER=mock` (по умолчанию) даёт стабильные характеристики для демо;
+  `SPEC_PROVIDER=html` пробует достать их из JSON-LD/meta/текста страницы — сайты могут блокировать ботов.
+- В сравнении участвуют только товары одной темы; доступно от 2 до 4 товаров.
 
 ## Локальная разработка (опционально)
 

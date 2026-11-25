@@ -1,5 +1,7 @@
 package com.example.pricetracker.web;
 
+import com.example.pricetracker.compare.CategoryCatalog;
+import com.example.pricetracker.compare.ComparisonService;
 import com.example.pricetracker.dto.*;
 import com.example.pricetracker.service.AuthService;
 import com.example.pricetracker.service.ProductService;
@@ -20,11 +22,19 @@ public class ApiController {
     private final AuthService auth;
     private final ProductService products;
     private final StatsService stats;
+    private final CategoryCatalog categories;
+    private final ComparisonService comparisons;
 
-    public ApiController(AuthService auth, ProductService products, StatsService stats) {
+    public ApiController(AuthService auth,
+                         ProductService products,
+                         StatsService stats,
+                         CategoryCatalog categories,
+                         ComparisonService comparisons) {
         this.auth = auth;
         this.products = products;
         this.stats = stats;
+        this.categories = categories;
+        this.comparisons = comparisons;
     }
 
     @PostMapping("/auth/register")
@@ -42,8 +52,9 @@ public class ApiController {
     public Paginated<ProductResponse> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String category,
             @AuthenticationPrincipal UserIdPrincipal principal) {
-        var result = products.list(principal.id(), PageRequest.of(page, size));
+        var result = products.list(principal.id(), PageRequest.of(page, size), category);
         return new Paginated<>(result.getContent(), result.getTotalElements(),
                 result.getNumber(), result.getSize());
     }
@@ -105,6 +116,23 @@ public class ApiController {
             @AuthenticationPrincipal UserIdPrincipal principal) {
         return stats.topDrops(principal.id(), Math.min(Math.max(days, 1), 90),
                 Math.min(Math.max(limit, 1), 50));
+    }
+
+    @GetMapping("/categories")
+    public java.util.List<CategoryCatalog.CategoryDef> categories() {
+        return categories.definitions();
+    }
+
+    @PostMapping("/compare")
+    public CompareResponse compare(@Valid @RequestBody CompareRequest request,
+                                   @AuthenticationPrincipal UserIdPrincipal principal) {
+        return comparisons.compare(principal.id(), request);
+    }
+
+    @GetMapping("/comparisons")
+    public java.util.List<SavedComparison> comparisons(
+            @AuthenticationPrincipal UserIdPrincipal principal) {
+        return comparisons.saved(principal.id());
     }
 
     @GetMapping("/alerts")

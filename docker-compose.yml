@@ -53,6 +53,7 @@ services:
       ACCESS_TOKEN_TTL_MINUTES: ${ACCESS_TOKEN_TTL_MINUTES:-120}
       POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-60000}
       PRICE_PROVIDER: ${PRICE_PROVIDER:-mock}
+      SPEC_PROVIDER: ${SPEC_PROVIDER:-mock}
       MOCK_BASE_PRICE: ${MOCK_BASE_PRICE:-8990}
     depends_on:
       db:
@@ -80,6 +81,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       POLL_INTERVAL_MS: ${POLL_INTERVAL_MS:-60000}
       PRICE_PROVIDER: ${PRICE_PROVIDER:-mock}
+      SPEC_PROVIDER: ${SPEC_PROVIDER:-mock}
       MOCK_BASE_PRICE: ${MOCK_BASE_PRICE:-8990}
     depends_on:
       db:
