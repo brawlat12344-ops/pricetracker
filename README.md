@@ -31,6 +31,23 @@ docker compose ps -a
 
 Открыть: **http://localhost**
 
+## Быстрый запуск одним кликом (Windows)
+
+Двойной клик по `PriceTracker.exe` в корне проекта:
+
+- проверит и при необходимости запустит Docker Desktop;
+- выполнит `docker compose up -d`;
+- дождётся `{"status":"UP"}`;
+- откроет **http://localhost** в браузере.
+
+Без открытия браузера:
+
+```powershell
+.\PriceTracker.exe --no-open
+```
+
+Исходник и инструкция по сборке: `tools/launcher/README.md`.
+
 ## Сервисы
 
 | Сервис | Папка | Ответственность | Dockerfile | API |
