@@ -16,7 +16,8 @@ public record CheaperItem(
         Map<String, String> attributes,
         double score,
         double valueScore,
-        List<String> missingAttributes) {
+        List<String> missingAttributes,
+        boolean demo) {
 
     /** Алиас для общего фрагмента таблицы сравнения. */
     public UUID productId() {

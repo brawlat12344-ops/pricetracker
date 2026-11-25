@@ -104,7 +104,7 @@ public class CheapSearchService {
             // превратила бы любой дорогой товар в «та же конфигурация».
             Map<String, String> specs = configExtractor.extract(offer.text() + " " + offer.title());
             if (addItem(items, seen, source, specs, category, offer.storeLabel(),
-                    offer.title(), offer.url(), offer.price()) == 0) {
+                    offer.title(), offer.url(), offer.price(), false) == 0) {
                 realAdded++;
             } else {
                 rejected++;
@@ -118,11 +118,16 @@ public class CheapSearchService {
         List<DemoCheaperSource.Offer> fallback = demoSource.offers(
                 category, source.specs(), source.price(), limit);
         for (DemoCheaperSource.Offer offer : fallback) {
+            // Ссылка ведёт на реальный поиск магазина по найденной комплектации — по ней можно
+            // перейти и проверить актуальную цену вручную.
+            String offerUrl = stores.searchUrl(stores.byKey(offer.storeKey()),
+                    specsQuery(offer.specs()), host(url));
             rejected += addItem(items, seen, source, offer.specs(), category, offer.store(),
-                    offer.title(), offer.url(), offer.price());
+                    offer.title(), offerUrl, offer.price(), true);
         }
         if (!fallback.isEmpty()) {
-            warnings.add("Демо-варианты сгенерированы для демонстрации: цены ниже исходной заданы искусственно.");
+            warnings.add("У демо-вариантов цены искусственно занижены: ссылка открывает реальный "
+                    + "поиск магазина по этой конфигурации, где нужно проверить текущую цену.");
         }
 
         if (items.isEmpty()) {
@@ -147,9 +152,19 @@ public class CheapSearchService {
                 items, winner.id(), verdict, warnings, search.offers().size(), rejected);
     }
 
+    private String specsQuery(Map<String, String> specs) {
+        return "сборка ПК "
+                + String.join(" ",
+                specs.getOrDefault("cpu", ""),
+                specs.getOrDefault("gpu", ""),
+                specs.getOrDefault("ram_gb", "") + " ГБ",
+                specs.getOrDefault("storage_gb", "") + " ГБ")
+                .replaceAll("\\s+", " ").trim();
+    }
+
     private int addItem(List<CheaperItem> items, Set<String> seen, SourceCard source,
                         Map<String, String> specs, String category, String store, String title,
-                        String url, BigDecimal price) {
+                        String url, BigDecimal price, boolean demo) {
         if (items.size() >= 10 || !seen.add(url)) {
             return 1;
         }
@@ -159,7 +174,7 @@ public class CheapSearchService {
         Evaluation evaluation = comparisons.evaluate(category, specs, price);
         UUID id = UUID.nameUUIDFromBytes(url.getBytes(StandardCharsets.UTF_8));
         items.add(new CheaperItem(id, store, title, url, price, source.price(), specs,
-                evaluation.score(), evaluation.valueScore(), evaluation.missingAttributes()));
+                evaluation.score(), evaluation.valueScore(), evaluation.missingAttributes(), demo));
         return 0;
     }
 

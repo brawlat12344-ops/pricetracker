@@ -26,6 +26,10 @@ public class StoreRegistry {
                     "https://www.mvideo.ru/products/search?q={q}", true),
             new Store("citilink", "Ситилинк", List.of("citilink.ru", "www.citilink.ru"),
                     "https://www.citilink.ru/search/?text={q}", true),
+            new Store("ozon", "Ozon", List.of("ozon.ru", "www.ozon.ru"),
+                    "https://www.ozon.ru/search/?text={q}", true),
+            new Store("wildberries", "Wildberries", List.of("wildberries.ru", "www.wildberries.ru"),
+                    "https://www.wildberries.ru/catalog/0/search.aspx?search={q}", true),
             GENERIC);
 
     public List<Store> all() {

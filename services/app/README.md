@@ -55,6 +55,8 @@
 
 **Зависимости:** `db` (JDBC/JPA), `migrate` (должен завершиться), провайдер цен и провайдер характеристик (`SPEC_PROVIDER=mock|html`).
 Для аналогов используется демо-каталог и, при `ANALOG_WEB_SEARCH=true` или `web=true`, веб-поиск DuckDuckGo/Bing.
-Для поиска дешевле — `StoreRegistry`/`StoreOffersSource` (DNS-Shop, М.Видео, Ситилинк, Bing),
-`StoreProductParser`, `ConfigExtractor`, `SameConfigMatcher` и демо-фолбэк. Оба отчёта разовые и не пишутся в БД.
+Для поиска дешевле — `StoreRegistry`/`StoreOffersSource` (DNS-Shop, М.Видео, Ситилинк, Ozon,
+Wildberries, Bing), `StoreProductParser`, `ConfigExtractor`, `SameConfigMatcher` и демо-фолбэк.
+Ссылки в отчёте кликабельны: реальные карточки ведут на товар, демо-варианты — на поиск конфигурации
+в магазине. Оба отчёта разовые и не пишутся в БД.
 **Порт:** 8080 внутри сети `appnet`.

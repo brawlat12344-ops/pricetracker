@@ -16,12 +16,19 @@ import java.util.Map;
 @Component
 public class DemoCheaperSource {
 
-    public record Offer(String store, String title, String url,
+    /**
+     * url не задаётся намеренно: ссылку строит CheapSearchService через StoreRegistry,
+     * чтобы клик открывал реальный поиск магазина, а не фейковую демо-страницу.
+     */
+    public record Offer(String storeKey, String store, String title,
                         BigDecimal price, Map<String, String> specs) {
     }
 
+    private static final List<String> STORE_KEYS = List.of(
+            "dns", "mvideo", "citilink", "ozon", "wildberries");
+
     private static final List<String> STORES = List.of(
-            "Демо-DNS", "Демо-М.Видео", "Демо-Ситилинк", "Демо-Маркет");
+            "DNS-Shop", "М.Видео", "Ситилинк", "Ozon", "Wildberries");
 
     private static final List<String> DISCOUNTS = List.of("5", "9", "13", "17", "21", "25", "29");
 
@@ -47,9 +54,9 @@ public class DemoCheaperSource {
                     .divide(BigDecimal.TEN, 0, RoundingMode.HALF_UP)
                     .multiply(BigDecimal.TEN)
                     .max(BigDecimal.valueOf(1000));
-            String store = STORES.get(i % STORES.size());
-            result.add(new Offer(store, demoTitle(variant),
-                    "https://demo.example.com/cheaper/offer-" + (i + 1), price, variant));
+            int storeIndex = i % STORE_KEYS.size();
+            result.add(new Offer(STORE_KEYS.get(storeIndex), STORES.get(storeIndex),
+                    demoTitle(variant), price, variant));
         }
         return result;
     }

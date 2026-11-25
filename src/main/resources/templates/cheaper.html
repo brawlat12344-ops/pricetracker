@@ -68,11 +68,14 @@
         </div>
 
         <h3>Дешевле и не хуже по комплектации</h3>
+        <p class="muted">Клик по названию открывает магазин в новой вкладке: у реальных карточек —
+            страницу товара, у демо-вариантов — поиск этой же конфигурации в магазине.</p>
         <ul>
             <li th:each="item : ${result.items}">
                 <span class="badge ok" th:text="${item.store}"></span>
                 <a th:href="${item.url}" target="_blank" rel="noopener noreferrer"
                    th:text="${item.title}"></a>
+                <span class="badge" th:if="${item.demo}">ДЕМО-ЦЕНА</span>
                 <span class="muted" th:text="' — ' + ${item.price} + ' ₽'"></span>
                 <span th:text="' (−' + ${item.discountPercent} + '%)'"></span>
                 <span class="badge ok" th:if="${item.productId == result.winnerId}">ЛУЧШЕЕ ЗА ЦЕНУ</span>
