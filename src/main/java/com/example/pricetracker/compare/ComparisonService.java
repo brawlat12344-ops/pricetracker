@@ -86,25 +86,11 @@ public class ComparisonService {
             }
 
             BigDecimal price = latestPrice(product.getId());
-            Map<String, Double> scores = new LinkedHashMap<>();
-            List<String> missing = new ArrayList<>();
-            double total = 0;
-
-            for (AttributeDef attribute : definition.attributes()) {
-                double score = attributeScore(attribute, attributes.get(attribute.key()));
-                scores.put(attribute.key(), score);
-                if (score <= 0) {
-                    missing.add(attribute.key());
-                }
-                total += attribute.weight() / 100.0 * score;
-            }
-
-            double value = price.signum() > 0
-                    ? total / price.doubleValue() * 1000
-                    : 0;
+            Evaluation evaluation = evaluate(category, attributes, price);
 
             items.add(new CompareItem(product.getId(), product.getTitle(), product.getUrl(), price,
-                    total, value, attributes, scores, missing));
+                    evaluation.score(), evaluation.valueScore(), attributes,
+                    evaluation.attributeScores(), evaluation.missingAttributes()));
         }
 
         CompareItem winner = items.stream()
@@ -137,6 +123,35 @@ public class ComparisonService {
                         readIds(rs.getString("product_ids")),
                         rs.getString("winner_id") == null ? null : UUID.fromString(rs.getString("winner_id")),
                         rs.getTimestamp("created_at").toInstant()));
+    }
+
+    public record Evaluation(
+            double score,
+            double valueScore,
+            Map<String, Double> attributeScores,
+            List<String> missingAttributes) {
+    }
+
+    /** Единая формула скоринга: используется и для товаров, и для найденных аналогов. */
+    public Evaluation evaluate(String category, Map<String, String> attributes, BigDecimal price) {
+        CategoryDef definition = catalog.get(category);
+        Map<String, Double> scores = new LinkedHashMap<>();
+        List<String> missing = new ArrayList<>();
+        double total = 0;
+
+        for (AttributeDef attribute : definition.attributes()) {
+            double score = attributeScore(attribute, attributes.get(attribute.key()));
+            scores.put(attribute.key(), score);
+            if (score <= 0) {
+                missing.add(attribute.key());
+            }
+            total += attribute.weight() / 100.0 * score;
+        }
+
+        double value = price != null && price.signum() > 0
+                ? total / price.doubleValue() * 1000
+                : 0;
+        return new Evaluation(total, value, scores, missing);
     }
 
     private BigDecimal latestPrice(UUID productId) {

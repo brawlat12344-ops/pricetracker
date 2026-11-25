@@ -22,6 +22,7 @@ ACCESS_TOKEN_TTL_MINUTES=120
 POLL_INTERVAL_MS=60000
 PRICE_PROVIDER=mock
 SPEC_PROVIDER=mock
+ANALOG_WEB_SEARCH=false
 MOCK_BASE_PRICE=8990
 APP_PORT=80
 "@ | Set-Content .env -Encoding utf8
@@ -58,8 +59,8 @@ docker compose ps -a
 | Сервис | Папка | Ответственность | Dockerfile | API |
 |---|---|---|---|---|
 | `db` | `services/db` | PostgreSQL 16, volume `db_data` | `services/db/Dockerfile` | SQL :5432 |
-| `migrate` | `services/migrate` | Flyway-миграции V1 + V2, one-shot | `services/migrate/Dockerfile` | CLI / Flyway |
-| `app` | `services/app` | REST API + Thymeleaf UI + SVG + сравнение товаров | `services/app/Dockerfile` | `/api/**`, `/compare`, `/actuator/**` |
+| `migrate` | `services/migrate` | Flyway-миграции V1 + V2 + V3, one-shot | `services/migrate/Dockerfile` | CLI / Flyway |
+| `app` | `services/app` | REST API + Thymeleaf UI + SVG + сравнение и поиск аналогов | `services/app/Dockerfile` | `/api/**`, `/compare`, `/analogs`, `/actuator/**` |
 | `worker` | `services/worker` | `@Scheduled` опрос цен | `services/worker/Dockerfile` | `/actuator/health`, `PollScheduler` |
 | `nginx` | `services/nginx` | reverse proxy, точка входа :80 | `services/nginx/Dockerfile` | `/`, `/api/` |
 
@@ -83,8 +84,14 @@ docker compose ps -a
 Сравнение берёт 2–4 товара одной темы, считает баллы по весам характеристик,
 делит их на актуальную цену из карточки и выдаёт вердикт «что лучше за эти деньги».
 
+Отдельный сценарий «одна ссылка → до 10 аналогов»: вставляем ссылку на сборку ПК,
+система добавляет исходную карточку и подбирает до 9–10 аналогов из демо-каталога
+и (по желанию) из веб-поиска, после чего строит тот же рейтинг «баллов за 1000 ₽».
+Найденные карточки **не добавляются** в отслеживание — это разовый отчёт.
+
 Демо-сценарий: войти под демо-аккаунтом → добавить два ноутбука → отметить их чекбоксами
 → «Сравнить выбранные» → увидеть таблицу CPU/RAM/экрана и вердикт.
+Далее: «Поиск аналогов» → вставить ссылку на ПК → получить 10 карточек и лучшее за цену.
 Отдельно можно проверить цены: «Опросить» → алерт → график → повторный опрос в ту же минуту
 не создаёт дубль.
 
@@ -103,6 +110,9 @@ C4-схемы трёх уровней (Context, Container, Component): **[docs/c
   (JSON-LD `additionalProperty`, meta-теги, эвристики по тексту страницы);
 - `CategoryCatalog` хранит веса характеристик для четырёх тем, `ComparisonService` считает
   «баллы за 1000 ₽» и сохраняет сравнение в таблице `comparisons`;
+- `AnalogService` ищет аналоги по одной ссылке: `DemoCatalogSource` (12 сборок, без сети)
+  и `WebSearchSource` (DuckDuckGo HTML, при неудаче Bing). Карточки из поиска дозагружаются
+  через `HtmlPriceProvider` / `HtmlSpecProvider`; карточки без цены или характеристик пропускаются;
 - стартовый порядок задан `depends_on` с `condition`.
 
 ## Проверка результата
@@ -159,9 +169,24 @@ curl.exe -s -X POST http://localhost/api/compare -H "Authorization: Bearer $toke
 
 UI: главная → фильтр по теме → чекбоксы 2–4 товаров → «Сравнить выбранные».
 
+### 6. Поиск аналогов по одной ссылке
+
+```powershell
+$body = '{"url":"https://shop.example/pc/my-build","category":"pc","title":"сборка ПК","limit":10,"web":false}'
+curl.exe -s -X POST http://localhost/api/analogs -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" -d $body
+```
+
+UI: «Поиск аналогов» в шапке → вставить URL → выбрать тему и число карточек →
+при желании включить «Искать в интернете» → «Найти и сравнить».
+
+В ответе: `items` (до 10 карточек с ценой и характеристиками), `winnerId`, `verdict`,
+`warnings`. Реальный поиск часто блокируется сайтами — тогда приложение показывает
+предупреждение и заполняет список демо-карточками.
+
 Скриншоты для отчёта: страница «Отслеживаемые товары» с фильтром, ценой и алертом,
-страница товара с SVG-графиком, страница `/compare` с вердиктом,
-вывод `docker compose ps -a` и вывод `curl /actuator/health`.
+страница товара с SVG-графиком, страница `/compare` с вердиктом, страница `/analogs`
+с десятью аналогами, вывод `docker compose ps -a` и вывод `curl /actuator/health`.
 
 ## Демо через curl
 
@@ -200,6 +225,7 @@ curl.exe -s "http://localhost/api/alerts" -H "Authorization: Bearer $token"
 | `POST` | `/api/alerts/{id}/read` | отметить прочитанным |
 | `POST` | `/api/compare` | сравнить 2–4 товара одной темы |
 | `GET` | `/api/comparisons` | сохранённые сравнения |
+| `POST` | `/api/analogs` | найти до 10 аналогов по одной ссылке |
 
 ## Важное
 
@@ -209,6 +235,11 @@ curl.exe -s "http://localhost/api/alerts" -H "Authorization: Bearer $token"
 - `SPEC_PROVIDER=mock` (по умолчанию) даёт стабильные характеристики для демо;
   `SPEC_PROVIDER=html` пробует достать их из JSON-LD/meta/текста страницы — сайты могут блокировать ботов.
 - В сравнении участвуют только товары одной темы; доступно от 2 до 4 товаров.
+- `ANALOG_WEB_SEARCH=false` (по умолчанию) — аналоги только из демо-каталога; `true` —
+  дополнительно пробуется веб-поиск. Флаг `web` в `/api/analogs` и чекбокс на странице
+  переопределяют настройку для одного запроса.
+- Демо-каталог задаёт цены и характеристики явно. В демо-режиме цены исходной ссылки
+  оцениваются по комплектации — об этом пишется в `warnings`.
 
 ## Локальная разработка (опционально)
 

@@ -1,5 +1,6 @@
 package com.example.pricetracker.web;
 
+import com.example.pricetracker.analog.AnalogService;
 import com.example.pricetracker.compare.CategoryCatalog;
 import com.example.pricetracker.compare.ComparisonService;
 import com.example.pricetracker.dto.*;
@@ -24,17 +25,20 @@ public class ApiController {
     private final StatsService stats;
     private final CategoryCatalog categories;
     private final ComparisonService comparisons;
+    private final AnalogService analogs;
 
     public ApiController(AuthService auth,
                          ProductService products,
                          StatsService stats,
                          CategoryCatalog categories,
-                         ComparisonService comparisons) {
+                         ComparisonService comparisons,
+                         AnalogService analogs) {
         this.auth = auth;
         this.products = products;
         this.stats = stats;
         this.categories = categories;
         this.comparisons = comparisons;
+        this.analogs = analogs;
     }
 
     @PostMapping("/auth/login")
@@ -127,6 +131,12 @@ public class ApiController {
     public java.util.List<SavedComparison> comparisons(
             @AuthenticationPrincipal UserIdPrincipal principal) {
         return comparisons.saved(principal.id());
+    }
+
+    @PostMapping("/analogs")
+    public AnalogResponse analogs(@Valid @RequestBody AnalogRequest request,
+                                  @AuthenticationPrincipal UserIdPrincipal principal) {
+        return analogs.find(principal.id(), request);
     }
 
     @GetMapping("/alerts")

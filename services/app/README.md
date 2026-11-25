@@ -1,7 +1,7 @@
 # Сервис `app`
 
-**Ответственность:** REST API + пользовательский интерфейс + сравнение товаров по темам.
-Единственный сервис, доступный пользователю через nginx.
+**Ответственность:** REST API + пользовательский интерфейс + сравнение товаров по темам
++ поиск до 10 аналогов по одной ссылке. Единственный сервис, доступный пользователю через nginx.
 
 **Профиль запуска:** `app` (зашит в `Dockerfile` в `ENTRYPOINT`).
 
@@ -16,6 +16,7 @@
 | `POST` | `/login`, `/logout` | Формы, httpOnly-cookie `pricetracker_token` |
 | `GET` | `/product/{id}` | Страница товара с SVG-графиком |
 | `GET` | `/compare?ids=<uuid>&ids=<uuid>` | Сравнение 2–4 товаров одной темы |
+| `GET` | `/analogs?url=...&category=pc&limit=10&web=false` | Поиск аналогов по одной ссылке |
 | `POST` | `/web/products` | Добавить товар (поля `url`, `title`, `alertThreshold`, `category`) |
 | `POST` | `/web/products/{id}/poll` | Опросить цену |
 | `POST` | `/web/products/{id}/delete` | Удалить товар |
@@ -40,6 +41,7 @@
 | `POST` | `/api/alerts/{id}/read` | Прочитать алерт |
 | `POST` | `/api/compare` | Сравнить 2–4 товара: `productIds`, `name` |
 | `GET` | `/api/comparisons` | Последние сохранённые сравнения |
+| `POST` | `/api/analogs` | Аналоги по ссылке: `url`, `category`, `title`, `limit`, `web` |
 
 ### Операционный API
 
@@ -49,4 +51,5 @@
 | `GET` | `/actuator/info` | Информация о приложении |
 
 **Зависимости:** `db` (JDBC/JPA), `migrate` (должен завершиться), провайдер цен и провайдер характеристик (`SPEC_PROVIDER=mock|html`).
+Для аналогов используется демо-каталог и, при `ANALOG_WEB_SEARCH=true` или `web=true`, веб-поиск DuckDuckGo/Bing.
 **Порт:** 8080 внутри сети `appnet`.

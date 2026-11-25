@@ -1,7 +1,10 @@
 package com.example.pricetracker.web;
 
+import com.example.pricetracker.analog.AnalogService;
 import com.example.pricetracker.compare.CategoryCatalog;
 import com.example.pricetracker.compare.ComparisonService;
+import com.example.pricetracker.dto.AnalogRequest;
+import com.example.pricetracker.dto.AnalogResponse;
 import com.example.pricetracker.dto.AlertResponse;
 import com.example.pricetracker.dto.CompareRequest;
 import com.example.pricetracker.dto.CompareResponse;
@@ -40,6 +43,8 @@ public class WebController {
     private final int ttlSeconds;
     private final CategoryCatalog categories;
     private final ComparisonService comparisons;
+    private final AnalogService analogs;
+    private final boolean analogWebDefault;
 
     public WebController(AuthService auth,
                          ProductService products,
@@ -47,13 +52,17 @@ public class WebController {
                          ChartSvgService chart,
                          CategoryCatalog categories,
                          ComparisonService comparisons,
-                         @Value("${jwt.ttl-minutes:120}") int ttlMinutes) {
+                         AnalogService analogs,
+                         @Value("${jwt.ttl-minutes:120}") int ttlMinutes,
+                         @Value("${pricetracker.analog-web-search:false}") boolean analogWebDefault) {
         this.auth = auth;
         this.products = products;
         this.stats = stats;
         this.chart = chart;
         this.categories = categories;
         this.comparisons = comparisons;
+        this.analogs = analogs;
+        this.analogWebDefault = analogWebDefault;
         this.ttlSeconds = ttlMinutes * 60;
     }
 
@@ -174,6 +183,35 @@ public class WebController {
             redirect.addFlashAttribute("error", "Не удалось сравнить: " + ex.getMessage());
             return "redirect:/";
         }
+    }
+
+    @GetMapping("/analogs")
+    public String analogs(@RequestParam(required = false) String url,
+                          @RequestParam(defaultValue = "pc") String category,
+                          @RequestParam(required = false) String title,
+                          @RequestParam(defaultValue = "10") int limit,
+                          @RequestParam(required = false) Boolean web,
+                          @AuthenticationPrincipal UserIdPrincipal principal,
+                          Model model) {
+        model.addAttribute("categories", categories.definitions());
+        model.addAttribute("analogUrl", url == null ? "" : url);
+        model.addAttribute("analogCategory", category);
+        model.addAttribute("analogTitle", title == null ? "" : title);
+        model.addAttribute("analogLimit", limit);
+        model.addAttribute("analogWeb", web == null ? analogWebDefault : web);
+        model.addAttribute("result", null);
+        model.addAttribute("error", "");
+
+        if (url != null && !url.isBlank()) {
+            try {
+                AnalogResponse result = analogs.find(principal.id(),
+                        new AnalogRequest(url, category, title, limit, web));
+                model.addAttribute("result", result);
+            } catch (Exception ex) {
+                model.addAttribute("error", "Не удалось найти аналоги: " + ex.getMessage());
+            }
+        }
+        return "analogs";
     }
 
     @PostMapping("/web/alerts/{id}/read")

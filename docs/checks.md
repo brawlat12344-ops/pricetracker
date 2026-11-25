@@ -192,7 +192,44 @@ curl.exe -s "$base/comparisons" -H "Authorization: Bearer $token"
 
 Открыть в браузере: `http://localhost/compare?ids=<id-alpha>&ids=<id-beta>`.
 
-## 7. Логи воркера
+## 7. Поиск до 10 аналогов по одной ссылке
+
+```powershell
+$body = '{"url":"https://shop.example/pc/my-build","category":"pc","title":"сборка ПК RTX 4070","limit":10,"web":false}'
+curl.exe -s -X POST "$base/analogs" -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" -d $body
+```
+
+Ожидаемый вывод (сокращённо):
+
+```json
+{
+  "sourceUrl": "https://shop.example/pc/my-build",
+  "category": "pc",
+  "categoryLabel": "Сборка ПК",
+  "source": "демо-каталог",
+  "items": [
+    {"title":"Мой ПК","price":109600.00,"score":65.8,"valueScore":0.60},
+    {"title":"Core i5 + RTX 4060 · старт","price":89900.00,"score":50.1,"valueScore":0.56},
+    {"title":"Ryzen 5 + RTX 4060 · бюджет","price":92500.00,"score":49.2,"valueScore":0.53}
+  ],
+  "winnerId": "...",
+  "verdict": "Лучшее за цену: Мой ПК — 0.60 балла за 1000 ₽ ... Исходная ссылка занимает 1 место.",
+  "warnings": ["Провайдер цены работает в демо-режиме: цена исходной ссылки оценена по характеристикам."]
+}
+```
+
+`items` содержит ровно 10 карточек: исходная ссылка плюс лучшие демо-сборки.
+Все найденные карточки остаются разовым отчётом — в список отслеживаемых товаров не попадают.
+
+Чтобы попробовать реальный поиск, замени `"web":false` на `"web":true` (или включи чекбокс
+на странице и установи `ANALOG_WEB_SEARCH=true`). Источник сначала опрашивает DuckDuckGo HTML,
+при блокировке — Bing. Ссылки, у которых не нашлись цена и характеристики, пропускаются,
+а причина пишется в `warnings`; свободные места занимают карточки демо-каталога.
+
+UI: `http://localhost/analogs` (ссылка «Поиск аналогов» в шапке).
+
+## 8. Логи воркера
 
 ```powershell
 docker compose logs -f worker
@@ -202,7 +239,7 @@ docker compose logs -f worker
 worker_cycle_done products=1 created=1 duplicates=0 failed=0
 ```
 
-## 8. Что фотографировать
+## 9. Что фотографировать
 
 1. Вывод `docker compose ps -a`.
 2. Вывод `curl.exe http://localhost/actuator/health`.
@@ -211,3 +248,5 @@ worker_cycle_done products=1 created=1 duplicates=0 failed=0
 5. Вывод повторного `/poll` с `"created":false`.
 6. Страница `/compare`: таблица характеристик, баллы и вердикт «Лучшее за цену».
 7. Вывод `POST /api/compare` с `verdict` и `valueScore`.
+8. Страница `/analogs` с десятью карточками, таблицей и вердиктом.
+9. Вывод `POST /api/analogs` с `items`, `winnerId` и `warnings`.

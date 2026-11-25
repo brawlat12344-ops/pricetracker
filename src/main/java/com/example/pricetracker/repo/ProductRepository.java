@@ -16,5 +16,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     Optional<Product> findByIdAndUserId(UUID id, UUID userId);
 
+    Optional<Product> findByUserIdAndUrl(UUID userId, String url);
+
     long countByUserId(UUID userId);
 }

@@ -7,6 +7,10 @@
         <h1 th:text="${title}">PriceTracker</h1>
         <div class="muted">Цены, история и алерты в одном месте</div>
     </div>
+    <nav style="display:flex;gap:10px;align-items:center">
+        <a th:href="@{/}">Товары</a>
+        <a th:href="@{/analogs}">Поиск аналогов</a>
+    </nav>
     <form th:action="@{/logout}" method="post">
         <button class="secondary" type="submit">Выйти</button>
     </form>
