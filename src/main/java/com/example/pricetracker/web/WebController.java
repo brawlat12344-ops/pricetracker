@@ -8,6 +8,8 @@ import com.example.pricetracker.dto.AnalogResponse;
 import com.example.pricetracker.dto.AlertResponse;
 import com.example.pricetracker.dto.CompareRequest;
 import com.example.pricetracker.dto.CompareResponse;
+import com.example.pricetracker.dto.CheaperRequest;
+import com.example.pricetracker.dto.CheaperResponse;
 import com.example.pricetracker.dto.PollResponse;
 import com.example.pricetracker.dto.ProductResponse;
 import com.example.pricetracker.dto.SnapshotResponse;
@@ -18,6 +20,7 @@ import com.example.pricetracker.service.AuthService;
 import com.example.pricetracker.service.ChartSvgService;
 import com.example.pricetracker.service.ProductService;
 import com.example.pricetracker.service.StatsService;
+import com.example.pricetracker.store.CheapSearchService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -44,6 +47,7 @@ public class WebController {
     private final CategoryCatalog categories;
     private final ComparisonService comparisons;
     private final AnalogService analogs;
+    private final CheapSearchService cheaper;
     private final boolean analogWebDefault;
 
     public WebController(AuthService auth,
@@ -53,6 +57,7 @@ public class WebController {
                          CategoryCatalog categories,
                          ComparisonService comparisons,
                          AnalogService analogs,
+                         CheapSearchService cheaper,
                          @Value("${jwt.ttl-minutes:120}") int ttlMinutes,
                          @Value("${pricetracker.analog-web-search:false}") boolean analogWebDefault) {
         this.auth = auth;
@@ -62,6 +67,7 @@ public class WebController {
         this.categories = categories;
         this.comparisons = comparisons;
         this.analogs = analogs;
+        this.cheaper = cheaper;
         this.analogWebDefault = analogWebDefault;
         this.ttlSeconds = ttlMinutes * 60;
     }
@@ -212,6 +218,35 @@ public class WebController {
             }
         }
         return "analogs";
+    }
+
+    @GetMapping("/cheaper")
+    public String cheaper(@RequestParam(required = false) String url,
+                          @RequestParam(defaultValue = "pc") String category,
+                          @RequestParam(required = false) String title,
+                          @RequestParam(defaultValue = "10") int limit,
+                          @RequestParam(required = false) Boolean crossStore,
+                          @AuthenticationPrincipal UserIdPrincipal principal,
+                          Model model) {
+        model.addAttribute("categories", categories.definitions());
+        model.addAttribute("cheaperUrl", url == null ? "" : url);
+        model.addAttribute("cheaperCategory", category);
+        model.addAttribute("cheaperTitle", title == null ? "" : title);
+        model.addAttribute("cheaperLimit", limit);
+        model.addAttribute("cheaperCrossStore", crossStore == null || crossStore);
+        model.addAttribute("result", null);
+        model.addAttribute("error", "");
+
+        if (url != null && !url.isBlank()) {
+            try {
+                CheaperResponse result = cheaper.find(principal.id(),
+                        new CheaperRequest(url, category, title, limit, crossStore == null || crossStore));
+                model.addAttribute("result", result);
+            } catch (Exception ex) {
+                model.addAttribute("error", "Не удалось найти дешевле: " + ex.getMessage());
+            }
+        }
+        return "cheaper";
     }
 
     @PostMapping("/web/alerts/{id}/read")

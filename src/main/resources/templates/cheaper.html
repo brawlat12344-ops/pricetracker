@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Найти дешевле — PriceTracker</title>
+    <link rel="stylesheet" th:href="@{/style.css}">
+</head>
+<body>
+<main>
+    <div th:replace="~{fragments/header :: header('Поиск дешевле')}"></div>
+
+    <div class="card">
+        <h2>Вставь ссылку на сборку — найдём дешевле</h2>
+        <p class="muted">Ищем ту же или лучшую комплектацию в магазине из ссылки и, при включённом
+            переключателе, в других магазинах. Демо-варианты добавляются, если сайты блокируют парсер.</p>
+        <form method="get" th:action="@{/cheaper}">
+            <div class="grid">
+                <div>
+                    <label for="cheaperUrl">URL товара</label>
+                    <input id="cheaperUrl" name="url" type="url"
+                           placeholder="https://www.dns-shop.ru/product/.../"
+                           th:value="${cheaperUrl}" required>
+                </div>
+                <div>
+                    <label for="cheaperCategory">Тема</label>
+                    <select id="cheaperCategory" name="category">
+                        <option th:each="c : ${categories}" th:value="${c.key}"
+                                th:text="${c.label}" th:selected="${c.key == cheaperCategory}"></option>
+                    </select>
+                </div>
+                <div>
+                    <label for="cheaperTitle">Название/конфигурация (необязательно)</label>
+                    <input id="cheaperTitle" name="title" th:value="${cheaperTitle}"
+                           placeholder="Core i5 RTX 4070 32 ГБ">
+                </div>
+                <div>
+                    <label for="cheaperLimit">Сколько предложений</label>
+                    <input id="cheaperLimit" name="limit" type="number" min="1" max="10"
+                           th:value="${cheaperLimit}">
+                </div>
+            </div>
+            <p style="margin-top:12px">
+                <label><input type="radio" name="crossStore" value="true"
+                              th:checked="${cheaperCrossStore}"> Искать во всех магазинах</label>
+                <label style="margin-left:16px"><input type="radio" name="crossStore" value="false"
+                                                       th:checked="${!cheaperCrossStore}"> Только магазин из ссылки</label>
+            </p>
+            <p style="margin-top:14px"><button type="submit">Найти дешевле</button></p>
+        </form>
+    </div>
+
+    <p class="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="card" th:if="${result != null}">
+        <h2>Вердикт</h2>
+        <p th:text="${result.verdict}"></p>
+        <p class="muted"
+           th:text="'Исходник: ' + ${result.sourceTitle} + ' — ' + ${result.sourcePrice} + ' ₽'
+                   + ' · магазин: ' + ${result.store}
+                   + ' · найдено карточек: ' + ${result.foundOffers}
+                   + ' · отклонено: ' + ${result.rejectedOffers}"></p>
+
+        <div th:if="${!result.warnings.isEmpty()}">
+            <strong>Предупреждения:</strong>
+            <ul>
+                <li class="muted" th:each="warning : ${result.warnings}" th:text="${warning}"></li>
+            </ul>
+        </div>
+
+        <h3>Дешевле и не хуже по комплектации</h3>
+        <ul>
+            <li th:each="item : ${result.items}">
+                <span class="badge ok" th:text="${item.store}"></span>
+                <a th:href="${item.url}" target="_blank" rel="noopener noreferrer"
+                   th:text="${item.title}"></a>
+                <span class="muted" th:text="' — ' + ${item.price} + ' ₽'"></span>
+                <span th:text="' (−' + ${item.discountPercent} + '%)'"></span>
+                <span class="badge ok" th:if="${item.productId == result.winnerId}">ЛУЧШЕЕ ЗА ЦЕНУ</span>
+            </li>
+        </ul>
+    </div>
+
+    <div class="card" th:if="${result != null}">
+        <h2>Сравнение комплектаций</h2>
+        <div th:replace="~{fragments/compare-table :: table(${result})}"></div>
+    </div>
+</main>
+</body>
+</html>

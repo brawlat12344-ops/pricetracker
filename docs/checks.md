@@ -229,7 +229,46 @@ curl.exe -s -X POST "$base/analogs" -H "Authorization: Bearer $token" `
 
 UI: `http://localhost/analogs` (ссылка «Поиск аналогов» в шапке).
 
-## 8. Логи воркера
+## 8. Поиск той же сборки дешевле в магазинах
+
+```powershell
+$body = '{"url":"https://www.dns-shop.ru/product/8f1a2b3c4d5e/pc-rtx-4070-core-i5-32gb/","category":"pc","title":"сборка ПК Core i5 RTX 4070 32 ГБ","limit":10,"crossStore":true}'
+curl.exe -s -X POST "$base/cheaper" -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" -d $body
+```
+
+Ожидаемый вывод (сокращённо):
+
+```json
+{
+  "sourceUrl": "https://www.dns-shop.ru/product/8f1a2b3c4d5e/pc-rtx-4070-core-i5-32gb/",
+  "store": "DNS-Shop",
+  "sourcePrice": 146500.00,
+  "items": [
+    {"store":"Демо-Ситилинк","title":"core i5 / rtx 4070 / 64 ГБ / БП 850 Вт","price":104020.00,"score":80.1,"valueScore":0.77},
+    {"store":"Демо-М.Видео","title":"Core i7-14700K / rtx 4070 / 32 ГБ","price":109880.00,"score":70.0,"valueScore":0.66}
+  ],
+  "winnerId": "...",
+  "verdict": "Дешевле и не хуже по комплектации: ... на 29% ниже исходных 146500.00 ₽ ...",
+  "warnings": [
+    "Характеристики исходной страницы не прочитаны: HTTP 401 ...",
+    "DNS-Shop: поиск недоступен — HTTP 401",
+    "Демо-варианты сгенерированы для демонстрации: цены ниже исходной заданы искусственно."
+  ],
+  "foundOffers": 3,
+  "rejectedOffers": 3
+}
+```
+
+`items` содержит до 10 карточек. Каждая проходит проверку `SameConfigMatcher`: параметры
+из исходника не подменяются, поэтому «дешевле» означает ту же или лучшую комплектацию.
+`crossStore:false` ограничивает поиск магазином из ссылки. На практике DNS отвечает `401`,
+Ситилинк — `429`, М.Видео — пустую SPA-оболочку, поэтому честный фолбэк — демо-карточки
+с предупреждением в `warnings`.
+
+UI: `http://localhost/cheaper` (ссылка «Найти дешевле» в шапке).
+
+## 9. Логи воркера
 
 ```powershell
 docker compose logs -f worker
@@ -239,7 +278,7 @@ docker compose logs -f worker
 worker_cycle_done products=1 created=1 duplicates=0 failed=0
 ```
 
-## 9. Что фотографировать
+## 10. Что фотографировать
 
 1. Вывод `docker compose ps -a`.
 2. Вывод `curl.exe http://localhost/actuator/health`.
@@ -250,3 +289,5 @@ worker_cycle_done products=1 created=1 duplicates=0 failed=0
 7. Вывод `POST /api/compare` с `verdict` и `valueScore`.
 8. Страница `/analogs` с десятью карточками, таблицей и вердиктом.
 9. Вывод `POST /api/analogs` с `items`, `winnerId` и `warnings`.
+10. Страница `/cheaper` с предложениями дешевле, скидками и вердиктом.
+11. Вывод `POST /api/cheaper` с `store`, `sourcePrice`, `items` и `warnings`.

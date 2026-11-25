@@ -60,7 +60,7 @@ docker compose ps -a
 |---|---|---|---|---|
 | `db` | `services/db` | PostgreSQL 16, volume `db_data` | `services/db/Dockerfile` | SQL :5432 |
 | `migrate` | `services/migrate` | Flyway-миграции V1 + V2 + V3, one-shot | `services/migrate/Dockerfile` | CLI / Flyway |
-| `app` | `services/app` | REST API + Thymeleaf UI + SVG + сравнение и поиск аналогов | `services/app/Dockerfile` | `/api/**`, `/compare`, `/analogs`, `/actuator/**` |
+| `app` | `services/app` | REST API + Thymeleaf UI + SVG + сравнение, аналоги и поиск дешевле | `services/app/Dockerfile` | `/api/**`, `/compare`, `/analogs`, `/cheaper`, `/actuator/**` |
 | `worker` | `services/worker` | `@Scheduled` опрос цен | `services/worker/Dockerfile` | `/actuator/health`, `PollScheduler` |
 | `nginx` | `services/nginx` | reverse proxy, точка входа :80 | `services/nginx/Dockerfile` | `/`, `/api/` |
 
@@ -89,9 +89,18 @@ docker compose ps -a
 и (по желанию) из веб-поиска, после чего строит тот же рейтинг «баллов за 1000 ₽».
 Найденные карточки **не добавляются** в отслеживание — это разовый отчёт.
 
+Второй сценарий — «дешевле в магазинах»: вставляем ссылку с DNS-Shop, М.Видео, Ситилинка
+или любого другого сайта. `StoreRegistry` определяет магазин по хосту, `StoreOffersSource`
+ищет по его поисковой странице и (по желанию) по другим магазинам, `StoreProductParser`
+достаёт карточки из JSON-LD / DOM / Bing. `SameConfigMatcher` пропускает только ту же
+или лучшую комплектацию с ценой ниже исходной. Если сайт блокирует бота (401/429/капча),
+остаются демо-предложения с честным предупреждением в `warnings`.
+
 Демо-сценарий: войти под демо-аккаунтом → добавить два ноутбука → отметить их чекбоксами
 → «Сравнить выбранные» → увидеть таблицу CPU/RAM/экрана и вердикт.
 Далее: «Поиск аналогов» → вставить ссылку на ПК → получить 10 карточек и лучшее за цену.
+Затем: «Найти дешевле» → вставить ссылку с dns-shop.ru → получить предложения той же
+комплектации дешевле исходной.
 Отдельно можно проверить цены: «Опросить» → алерт → график → повторный опрос в ту же минуту
 не создаёт дубль.
 
@@ -113,6 +122,10 @@ C4-схемы трёх уровней (Context, Container, Component): **[docs/c
 - `AnalogService` ищет аналоги по одной ссылке: `DemoCatalogSource` (12 сборок, без сети)
   и `WebSearchSource` (DuckDuckGo HTML, при неудаче Bing). Карточки из поиска дозагружаются
   через `HtmlPriceProvider` / `HtmlSpecProvider`; карточки без цены или характеристик пропускаются;
+- `CheapSearchService` ищет дешевле: `StoreRegistry` (DNS-Shop / М.Видео / Ситилинк / generic),
+  `StoreOffersSource` (HTTP + запасной Bing), `StoreProductParser` (JSON-LD, DOM),
+  `ConfigExtractor` (CPU/GPU/RAM/диск/БП из текста), `SameConfigMatcher` (строго «не хуже»),
+  `DemoCheaperSource` — фолбэк с искусственно заниженными ценами. Ничего не пишется в БД;
 - стартовый порядок задан `depends_on` с `condition`.
 
 ## Проверка результата
@@ -184,9 +197,26 @@ UI: «Поиск аналогов» в шапке → вставить URL → �
 `warnings`. Реальный поиск часто блокируется сайтами — тогда приложение показывает
 предупреждение и заполняет список демо-карточками.
 
+### 7. Дешевле в магазинах по одной ссылке
+
+```powershell
+$body = '{"url":"https://www.dns-shop.ru/product/8f1a2b3c4d5e/pc-rtx-4070-core-i5-32gb/","category":"pc","title":"сборка ПК Core i5 RTX 4070 32 ГБ","limit":10,"crossStore":true}'
+curl.exe -s -X POST http://localhost/api/cheaper -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" -d $body
+```
+
+UI: «Найти дешевле» в шапке → вставить URL → выбрать тему → «Искать во всех магазинах»
+или «Только магазин из ссылки» → «Найти дешевле».
+
+В ответе: `store` (магазин из ссылки), `sourcePrice`, `items` с полями `store`, `price`,
+`discountPercent`, `attributes`, `valueScore`, `winnerId`, `verdict`, `warnings`,
+`foundOffers`, `rejectedOffers`. В список попадают только предложения с ценой строго ниже
+исходной и комплектацией не хуже. Ограничение — 10 карточек.
+
 Скриншоты для отчёта: страница «Отслеживаемые товары» с фильтром, ценой и алертом,
 страница товара с SVG-графиком, страница `/compare` с вердиктом, страница `/analogs`
-с десятью аналогами, вывод `docker compose ps -a` и вывод `curl /actuator/health`.
+с десятью аналогами, страница `/cheaper` с предложениями дешевле,
+вывод `docker compose ps -a` и вывод `curl /actuator/health`.
 
 ## Демо через curl
 
@@ -226,6 +256,7 @@ curl.exe -s "http://localhost/api/alerts" -H "Authorization: Bearer $token"
 | `POST` | `/api/compare` | сравнить 2–4 товара одной темы |
 | `GET` | `/api/comparisons` | сохранённые сравнения |
 | `POST` | `/api/analogs` | найти до 10 аналогов по одной ссылке |
+| `POST` | `/api/cheaper` | найти ту же конфигурацию дешевле в магазинах |
 
 ## Важное
 
@@ -240,6 +271,10 @@ curl.exe -s "http://localhost/api/alerts" -H "Authorization: Bearer $token"
   переопределяют настройку для одного запроса.
 - Демо-каталог задаёт цены и характеристики явно. В демо-режиме цены исходной ссылки
   оцениваются по комплектации — об этом пишется в `warnings`.
+- DNS-Shop отвечает `401`, Ситилинк — `429`, М.Видео отдаёт пустую SPA-оболочку.
+  Поэтому реальные цены доступны не всегда: приложение показывает,
+  какие именно источники не ответили, и подставляет демо-предложения.
+  Для продакшена нужен официальный API или договор с агрегатором данных.
 
 ## Локальная разработка (опционально)
 

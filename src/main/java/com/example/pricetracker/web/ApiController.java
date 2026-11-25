@@ -6,6 +6,7 @@ import com.example.pricetracker.compare.ComparisonService;
 import com.example.pricetracker.dto.*;
 import com.example.pricetracker.service.AuthService;
 import com.example.pricetracker.service.ProductService;
+import com.example.pricetracker.store.CheapSearchService;
 import com.example.pricetracker.service.StatsService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
@@ -26,19 +27,22 @@ public class ApiController {
     private final CategoryCatalog categories;
     private final ComparisonService comparisons;
     private final AnalogService analogs;
+    private final CheapSearchService cheaper;
 
     public ApiController(AuthService auth,
                          ProductService products,
                          StatsService stats,
                          CategoryCatalog categories,
                          ComparisonService comparisons,
-                         AnalogService analogs) {
+                         AnalogService analogs,
+                         CheapSearchService cheaper) {
         this.auth = auth;
         this.products = products;
         this.stats = stats;
         this.categories = categories;
         this.comparisons = comparisons;
         this.analogs = analogs;
+        this.cheaper = cheaper;
     }
 
     @PostMapping("/auth/login")
@@ -137,6 +141,12 @@ public class ApiController {
     public AnalogResponse analogs(@Valid @RequestBody AnalogRequest request,
                                   @AuthenticationPrincipal UserIdPrincipal principal) {
         return analogs.find(principal.id(), request);
+    }
+
+    @PostMapping("/cheaper")
+    public CheaperResponse cheaper(@Valid @RequestBody CheaperRequest request,
+                                   @AuthenticationPrincipal UserIdPrincipal principal) {
+        return cheaper.find(principal.id(), request);
     }
 
     @GetMapping("/alerts")
