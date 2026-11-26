@@ -28,6 +28,11 @@ public class StoreOffersSource {
             .connectTimeout(Duration.ofSeconds(8))
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
+    /** Короткие таймауты для конфигуратора: много компонентов в одном запросе. */
+    private final HttpClient fastClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(2))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
 
     public StoreOffersSource(StoreRegistry stores, QueryExtractor queries, StoreProductParser parser) {
         this.stores = stores;
@@ -58,12 +63,25 @@ public class StoreOffersSource {
 
     /** Поиск по готовому текстовому запросу — используется конфигуратором. */
     public Result searchQuery(String query, int limit, List<String> warnings) {
+        return searchQuery(query, limit, warnings, Duration.ofSeconds(12), client);
+    }
+
+    /**
+     * Быстрый поиск для конфигуратора: сколько угодно компонентов в одном запросе,
+     * но с короткими таймаутами, чтобы ответ успевал вернуться через nginx.
+     */
+    public Result searchQuery(String query, int limit, List<String> warnings, Duration timeout) {
+        return searchQuery(query, limit, warnings, timeout, fastClient);
+    }
+
+    private Result searchQuery(String query, int limit, List<String> warnings,
+                               Duration timeout, HttpClient http) {
         List<StoreProductParser.Offer> offers = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         StoreRegistry.Store primary = stores.byKey("dns");
-        searchStore(primary, query, "", limit, offers, seen, warnings);
+        searchStore(primary, query, "", limit, offers, seen, warnings, http, timeout);
         if (offers.isEmpty()) {
-            searchStore(stores.byKey("generic"), query, "", limit, offers, seen, warnings);
+            searchStore(stores.byKey("generic"), query, "", limit, offers, seen, warnings, http, timeout);
         }
         return new Result(primary, query, offers);
     }
@@ -71,8 +89,14 @@ public class StoreOffersSource {
     private void searchStore(StoreRegistry.Store store, String query, String host, int limit,
                              List<StoreProductParser.Offer> offers, Set<String> seen,
                              List<String> warnings) {
+        searchStore(store, query, host, limit, offers, seen, warnings, client, Duration.ofSeconds(12));
+    }
+
+    private void searchStore(StoreRegistry.Store store, String query, String host, int limit,
+                             List<StoreProductParser.Offer> offers, Set<String> seen,
+                             List<String> warnings, HttpClient http, Duration timeout) {
         try {
-            String html = fetch(stores.searchUrl(store, query, host));
+            String html = fetch(stores.searchUrl(store, query, host), http, timeout);
             List<StoreProductParser.Offer> parsed = parser.parse(html, store.key(), store.label(), limit);
             int added = 0;
             for (StoreProductParser.Offer offer : parsed) {
@@ -89,14 +113,14 @@ public class StoreOffersSource {
         }
     }
 
-    private String fetch(String url) {
+    private String fetch(String url, HttpClient http, Duration timeout) {
         HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-                .timeout(Duration.ofSeconds(12))
+                .timeout(timeout)
                 .header("User-Agent", "Mozilla/5.0 (compatible; PriceTrackerEdu/1.0; +https://example.local/bot)")
                 .GET()
                 .build();
         try {
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 202) {
                 throw new IllegalStateException("страница проверки бота (HTTP 202)");
             }

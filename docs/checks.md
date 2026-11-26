@@ -129,7 +129,7 @@ curl.exe -s -X POST "$base/api/cheaper" -H "Authorization: Bearer $token" `
 ## 7. Локальная сборка ПК/ноутбука
 
 ```powershell
-$body = '{"category":"pc","purpose":"game","budget":120000}'
+$body = '{"category":"pc","purpose":"game","priority":"performance","wishes":"","region":"Москва, Россия","budget":120000}'
 curl.exe -s -X POST "$base/api/build" -H "Authorization: Bearer $token" `
   -H "Content-Type: application/json" -d $body
 ```
@@ -141,25 +141,36 @@ curl.exe -s -X POST "$base/api/build" -H "Authorization: Bearer $token" `
   "category": "pc",
   "categoryLabel": "Сборка ПК",
   "purpose": "Игры",
+  "priority": "Производительность",
+  "region": "Москва, Россия",
   "budget": 120000,
   "parts": [
-    {"type":"cpu","label":"CPU · Процессор","name":"Ryzen 5 7600","score10":7.4,"reason":"процессор под задачу: игры"}
+    {"type":"cpu","label":"CPU · Процессор","name":"Ryzen 5 7600","score10":7.6,
+     "price":21000,"reason":"...","compatibility":"...",
+     "offers":[{"store":"Демо-каталог","price":21000,"url":"https://www.dns-shop.ru/search/?q=...",
+                "availability":"Наличие не указано — проверить","demo":true,"promo":false}]}
   ],
-  "query": "сборка ПК Ryzen 5 7600 AM5 DDR5 ...",
-  "totalPrice": 120000.00,
-  "store": "Демо-каталог",
-  "priceUrl": "https://www.dns-shop.ru/search/?q=...",
+  "totalPrice": 113000.00,
+  "budgetDelta": 7000.00,
   "demoPrice": true,
-  "score": 7.4,
-  "verdict": "Сборка: 120 000 ₽ (без превышения бюджета). Оценка 7.4/10. Демо-цена — проверьте в магазине.",
-  "warnings": ["Реальную цену по сборке получить не удалось: показан расчёт по демо-каталогу. ..."]
+  "score": 7.2,
+  "verdict": "Сборка: 113 000 ₽ (−7 000 ₽ к бюджету). Оценка 7.2/10. ...",
+  "rationale": ["..."], "assemblySteps": ["..."], "bottlenecks": ["..."],
+  "alternative": {"title":"Альтернативная сборка (+12%)","totalPrice":131000.00,"score":8.0},
+  "pricedAt": "2026-11-26",
+  "warnings": ["По компоненту «...» проверяемые цены не найдены: добавлены демо-предложения. ..."]
 }
 ```
 
-`BuildService` проверяет сокет CPU, тип памяти и запас мощности БП; `score` и `score10` лежат
-в диапазоне 0–10. Цена ищется одним запросом на всю сборку. Если сайт блокирует парсер или
-найдена посторонняя карточка, `demoPrice=true`, показывается бейдж `ДЕМО-ЦЕНА` и предупреждение.
-Страница с тем же результатом: `/cheaper?mode=build&category=pc&purpose=game&budget=120000`.
+`BuildService` распределяет бюджет по компонентам, проверяет сокет, чипсет, память, TDP,
+форм-фактор, длину GPU, высоту кулера, запас БП и баланс CPU/GPU; превышение бюджета более
+чем на 3% запрещено. `PartPriceService` ищет по 2–3 предложения на каждую деталь параллельно,
+с короткими таймаутами. `score` и `score10` лежат в диапазоне 0–10. Если сайт блокирует парсер
+или найдена посторонняя карточка, добавляются демо-предложения с бейджем `ДЕМО` и ссылкой
+на реальный поиск. Страница с тем же результатом:
+`/cheaper?mode=build&category=pc&purpose=game&priority=performance&budget=120000&region=Moscow`.
+Для ноутбука: `category=laptop&purpose=study&priority=compact&budget=90000`
+→ 7 деталей, 84 500 ₽, 8.8/10, альтернатива 96 000 ₽.
 
 ## 8. UI
 
@@ -171,7 +182,8 @@ curl.exe -s http://localhost/cheaper -H "Cookie: pricetracker_token=$token"
 - `http://localhost/` → `302` на `/cheaper`;
 - `http://localhost/cheaper` → HTTP 200, две формы, адаптивная навигация, анимации;
 - после поиска: вердикт, предупреждения и сравнение комплектаций; отдельного списка предложений нет;
-- после `mode=build`: карточка «Готовая конфигурация», цена сборки, оценка 0–10, детали и бейдж `ДЕМО-ЦЕНА`;
+- после `mode=build`: таблица «Компонент | Модель | Магазин | Цена | Наличие | Источник» (2–3 строки на деталь),
+  итог vs бюджет, обоснование, инструкция сборки, узкие места и альтернативная сборка;
 - названия в заголовках столбцов таблицы — кликабельные ссылки `target="_blank"`: демо-варианты
   открывают поиск конфигурации в DNS, М.Видео, Ситилинке, Ozon или Wildberries;
 - бейджи `ДЕМО-ЦЕНА` и `ЛУЧШЕЕ ЗА ЦЕНУ` остаются в таблице;
@@ -185,5 +197,6 @@ curl.exe -s http://localhost/cheaper -H "Cookie: pricetracker_token=$token"
 2. Вывод `curl.exe http://localhost/actuator/health`.
 3. Вывод `POST /api/cheaper` с `store`, `sourcePrice`, `items` и `warnings`.
 4. Страницу `/cheaper` с формой, коротким вердиктом, скидками и 10-балльной таблицей оценок.
-5. Вывод `POST /api/build` или страницу `/cheaper?mode=build...` с готовой сборкой и ценой.
+5. Вывод `POST /api/build` или страницу `/cheaper?mode=build...` с таблицей предложений по деталям,
+   инструкцией сборки и альтернативной конфигурацией.
 6. Вывод `docker exec pt-db psql ... \dt` — только `users` и Flyway-история.

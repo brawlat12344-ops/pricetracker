@@ -74,6 +74,9 @@ public class WebController {
                           @RequestParam(required = false) Boolean crossStore,
                           @RequestParam(defaultValue = "url") String mode,
                           @RequestParam(defaultValue = "balanced") String purpose,
+                          @RequestParam(defaultValue = "performance") String priority,
+                          @RequestParam(required = false) String wishes,
+                          @RequestParam(defaultValue = "Россия") String region,
                           @RequestParam(required = false) Integer budget,
                           Model model) {
         model.addAttribute("categories", categories.definitions());
@@ -85,6 +88,9 @@ public class WebController {
         model.addAttribute("mode", "build".equals(mode) ? "build" : "url");
         model.addAttribute("builderCategory", "laptop".equalsIgnoreCase(category) ? "laptop" : "pc");
         model.addAttribute("builderPurpose", purpose == null ? "balanced" : purpose);
+        model.addAttribute("builderPriority", priority == null ? "performance" : priority);
+        model.addAttribute("builderWishes", wishes == null ? "" : wishes);
+        model.addAttribute("builderRegion", region == null || region.isBlank() ? "Россия" : region);
         model.addAttribute("builderBudget", budget == null ? 120000 : budget);
         model.addAttribute("result", null);
         model.addAttribute("buildResult", null);
@@ -92,7 +98,8 @@ public class WebController {
 
         try {
             if ("build".equals(mode)) {
-                BuildResponse build = builder.build(new BuildRequest(category, purpose, budget));
+                BuildResponse build = builder.build(new BuildRequest(
+                        category, purpose, priority, wishes, region, budget));
                 model.addAttribute("buildResult", build);
             } else if (url != null && !url.isBlank()) {
                 CheaperResponse result = cheaper.find(new CheaperRequest(

@@ -51,9 +51,10 @@
 
     <div class="card">
         <h2>Или собери конфигурацию</h2>
-        <p class="muted">Локальный конфигуратор выберет совместимые комплектующие из каталога по цели
-            и бюджету, затем найдёт цену на всю сборку одним запросом. Если сайт блокирует парсер,
-            цена будет честно помечена как демо.</p>
+        <p class="muted">Экспертный подбор: бюджет распределяется по компонентам, для каждой детали
+            ищутся 2–3 предложения с магазином и ссылкой, проверяются сокет, чипсет, TDP,
+            форм-фактор, длина видеокарты, высота кулера и мощность БП. Цены фиксируются на дату
+            запроса; если сайт блокирует парсер, предложение честно помечается как демо.</p>
         <form method="get" th:action="@{/cheaper}">
             <input type="hidden" name="mode" value="build">
             <div class="grid">
@@ -68,18 +69,40 @@
                     </select>
                 </div>
                 <div>
-                    <label for="builderPurpose">Цель сборки</label>
+                    <label for="builderPurpose">Назначение</label>
                     <select id="builderPurpose" name="purpose">
                         <option value="game" th:selected="${builderPurpose == 'game'}">Игры</option>
                         <option value="work" th:selected="${builderPurpose == 'work'}">Работа</option>
+                        <option value="montage" th:selected="${builderPurpose == 'montage'}">Монтаж</option>
+                        <option value="3d" th:selected="${builderPurpose == '3d'}">3D</option>
+                        <option value="streaming" th:selected="${builderPurpose == 'streaming'}">Стриминг</option>
                         <option value="study" th:selected="${builderPurpose == 'study'}">Учёба</option>
-                        <option value="balanced" th:selected="${builderPurpose == 'balanced'}">Универсально</option>
+                        <option value="balanced" th:selected="${builderPurpose == 'balanced'}">Универсальное</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="builderPriority">Приоритет</label>
+                    <select id="builderPriority" name="priority">
+                        <option value="performance" th:selected="${builderPriority == 'performance'}">Производительность</option>
+                        <option value="silence" th:selected="${builderPriority == 'silence'}">Тишина</option>
+                        <option value="compact" th:selected="${builderPriority == 'compact'}">Компактность</option>
+                        <option value="upgrade" th:selected="${builderPriority == 'upgrade'}">Апгрейд</option>
                     </select>
                 </div>
                 <div>
                     <label for="builderBudget">Бюджет, ₽</label>
                     <input id="builderBudget" name="budget" type="number" min="20000" step="1000"
                            th:value="${builderBudget}">
+                </div>
+                <div>
+                    <label for="builderWishes">Особые пожелания</label>
+                    <input id="builderWishes" name="wishes" th:value="${builderWishes}"
+                           placeholder="RGB, бренд, форм-фактор, монитор">
+                </div>
+                <div>
+                    <label for="builderRegion">Город / страна</label>
+                    <input id="builderRegion" name="region" th:value="${builderRegion}"
+                           placeholder="Москва, Россия">
                 </div>
             </div>
             <div class="form-actions"><button type="submit">Собрать и узнать цену</button></div>
@@ -93,25 +116,84 @@
         <p th:text="${buildResult.verdict}"></p>
         <div class="build-total">
             <div><span class="muted">Цена сборки</span><strong th:text="${buildResult.totalPrice} + ' ₽'"></strong></div>
-            <div><span class="muted">Оценка</span><strong th:text="${buildResult.scoreLabel()}"></strong></div>
-            <div><span class="muted">Цель</span><strong th:text="${buildResult.purpose}"></strong></div>
             <div><span class="muted">Бюджет</span><strong th:text="${buildResult.budget} + ' ₽'"></strong></div>
+            <div><span class="muted">Оценка</span><strong th:text="${buildResult.scoreLabel()}"></strong></div>
+            <div><span class="muted">Цели</span><strong th:text="${buildResult.purpose}"></strong></div>
+            <div><span class="muted">Приоритет</span><strong th:text="${buildResult.priority}"></strong></div>
+            <div><span class="muted">Регион</span><strong th:text="${buildResult.region}"></strong></div>
+            <div><span class="muted">Цены на</span><strong th:text="${buildResult.pricedAt}"></strong></div>
         </div>
-        <p>
-            <a th:href="${buildResult.priceUrl}" target="_blank" rel="noopener noreferrer"
-               th:text="${buildResult.store} + ' — проверить цену'"></a>
-            <span class="badge" th:if="${buildResult.demoPrice}">ДЕМО-ЦЕНА</span>
-        </p>
-        <div class="builder-parts">
-            <div class="part-card" th:each="part : ${buildResult.parts}">
-                <div class="part-type" th:text="${part.label}"></div>
-                <div class="part-name" th:text="${part.name}"></div>
-                <div class="part-spec" th:text="${part.spec}"></div>
-                <div class="part-score" th:text="'Оценка ' + ${part.score10} + '/10'"></div>
-                <div class="muted" th:text="${part.reason}"></div>
+        <p th:if="${buildResult.demoPrice}"><span class="badge">ДЕМО-ЦЕНА</span>
+            Часть цен расчётная — откройте источник и уточните наличие.</p>
+
+        <h3>📋 Таблица компонентов</h3>
+        <div class="table-wrap build-offer-wrap">
+            <table class="build-offer-table">
+                <thead>
+                <tr>
+                    <th>Компонент</th>
+                    <th>Модель</th>
+                    <th>Магазин</th>
+                    <th>Цена</th>
+                    <th>Наличие</th>
+                    <th>Источник</th>
+                </tr>
+                </thead>
+                <tbody th:each="part : ${buildResult.parts}">
+                <tr th:each="offer, iter : ${part.offers}">
+                    <td th:if="${iter.index == 0}" th:rowspan="${part.offers.size()}"
+                        th:text="${part.label}"></td>
+                    <td th:if="${iter.index == 0}" th:rowspan="${part.offers.size()}"
+                        th:text="${part.name}"></td>
+                    <td th:text="${offer.store}"></td>
+                    <td th:text="${offer.price} + ' ₽'"></td>
+                    <td th:text="${offer.availability}"></td>
+                    <td>
+                        <a th:href="${offer.url}" target="_blank" rel="noopener noreferrer">Открыть</a>
+                        <span class="badge" th:if="${offer.demo}">ДЕМО</span>
+                        <span class="badge ok" th:if="${offer.promo}">АКЦИЯ</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>💰 Итоговая стоимость vs бюджет</h3>
+        <p th:text="'Итого ' + ${buildResult.totalPrice} + ' ₽ при бюджете ' + ${buildResult.budget}
+                + ' ₽. Отклонение: ' + ${buildResult.budgetDelta()} + ' ₽.'"></p>
+        <p class="error" th:if="${buildResult.overBudget()}">Превышение бюджета более чем на 3% недопустимо.</p>
+
+        <h3>⚖️ Обоснование выбора каждого компонента</h3>
+        <ol class="report-list">
+            <li th:each="line : ${buildResult.rationale}" th:text="${line}"></li>
+        </ol>
+
+        <h3>🔧 Пошаговая инструкция сборки</h3>
+        <ol class="report-list">
+            <li th:each="step : ${buildResult.assemblySteps}" th:text="${step}"></li>
+        </ol>
+
+        <h3>⚠️ Возможные узкие места и варианты апгрейда</h3>
+        <ul class="report-list">
+            <li th:each="line : ${buildResult.bottlenecks}" th:text="${line}"></li>
+        </ul>
+
+        <div th:if="${buildResult.alternative != null}">
+            <h3>🔄 Альтернативная сборка (+12%)</h3>
+            <p th:text="${buildResult.alternative.summary}"></p>
+            <p th:text="'Стоимость: ' + ${buildResult.alternative.totalPrice} + ' ₽ · оценка '
+                    + ${buildResult.alternative.scoreLabel()}"></p>
+            <div class="builder-parts">
+                <div class="part-card" th:each="part : ${buildResult.alternative.parts}">
+                    <div class="part-type" th:text="${part.label}"></div>
+                    <div class="part-name" th:text="${part.name}"></div>
+                    <div class="part-spec" th:text="${part.spec}"></div>
+                    <div class="muted" th:text="${part.price} + ' ₽ · ' + ${part.reason}"></div>
+                </div>
             </div>
         </div>
-        <p class="muted" th:text="'Поисковый запрос: ' + ${buildResult.query}"></p>
+
+        <p class="muted" th:text="'Поисковые запросы: ' + ${buildResult.query}"></p>
         <div th:if="${!buildResult.warnings.isEmpty()}">
             <strong>Предупреждения:</strong>
             <ul class="warning-list">

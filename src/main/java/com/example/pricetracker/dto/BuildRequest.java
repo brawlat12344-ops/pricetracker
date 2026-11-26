@@ -1,7 +1,16 @@
 package com.example.pricetracker.dto;
 
-/** Запрос локального конфигуратора: тема, цель и бюджет. */
-public record BuildRequest(String category, String purpose, Integer budget) {
+/** Запрос экспертного конфигуратора: бюджет, задача, приоритет и локальные пожелания. */
+public record BuildRequest(
+        String category,
+        String purpose,
+        String priority,
+        String wishes,
+        String region,
+        Integer budget) {
+
+    private static final String PURPOSES = "|game|work|montage|3d|streaming|study|balanced|";
+    private static final String PRIORITIES = "|performance|silence|compact|upgrade|";
 
     public String categoryOrPc() {
         return "laptop".equalsIgnoreCase(category) ? "laptop" : "pc";
@@ -12,8 +21,23 @@ public record BuildRequest(String category, String purpose, Integer budget) {
             return "balanced";
         }
         String value = purpose.toLowerCase();
-        return value.equals("game") || value.equals("work") || value.equals("study")
-                ? value : "balanced";
+        return PURPOSES.contains("|" + value + "|") ? value : "balanced";
+    }
+
+    public String priorityOrPerformance() {
+        if (priority == null) {
+            return "performance";
+        }
+        String value = priority.toLowerCase();
+        return PRIORITIES.contains("|" + value + "|") ? value : "performance";
+    }
+
+    public String wishesOrEmpty() {
+        return wishes == null ? "" : wishes.trim();
+    }
+
+    public String regionOrRussia() {
+        return region == null || region.isBlank() ? "Россия" : region.trim();
     }
 
     public int budgetOrDefault() {

@@ -333,6 +333,21 @@ code { background:rgba(255,255,255,.07); padding:2px 6px; border-radius:6px; }
 .part-spec { color:var(--muted); font-size:12px; }
 .part-score { margin-top:8px; font-size:12px; font-weight:700; }
 
+.build-offer-wrap { overflow-x:auto; margin:12px 0; }
+.build-offer-table { width:100%; border-collapse:collapse; font-size:12px; }
+.build-offer-table th, .build-offer-table td {
+  padding:8px 10px; border-bottom:1px solid var(--stroke);
+  text-align:left; vertical-align:top;
+}
+.build-offer-table th {
+  color:var(--accent); font-size:11px; letter-spacing:.05em;
+  text-transform:uppercase; white-space:nowrap;
+}
+.build-offer-table tbody tr:hover { background:rgba(56,189,248,.05); }
+.build-offer-table a { white-space:nowrap; }
+.report-list { margin:8px 0 14px; padding-left:22px; }
+.report-list li { margin:5px 0; line-height:1.5; }
+
 @media (max-width:720px) {
   header { justify-content:flex-start; }
   .spec-banner img { width:130px; height:100px; }
