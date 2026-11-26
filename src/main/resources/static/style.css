@@ -347,6 +347,12 @@ code { background:rgba(255,255,255,.07); padding:2px 6px; border-radius:6px; }
 .build-offer-table a { white-space:nowrap; }
 .report-list { margin:8px 0 14px; padding-left:22px; }
 .report-list li { margin:5px 0; line-height:1.5; }
+.top-pick {
+  padding:14px 16px; margin:12px 0; border-radius:14px;
+  border:1px solid rgba(56,189,248,.55); background:rgba(56,189,248,.09);
+}
+.top-pick > div { margin:5px 0; line-height:1.5; }
+.top-pick a { display:inline-block; margin-top:8px; font-weight:700; }
 
 @media (max-width:720px) {
   header { justify-content:flex-start; }

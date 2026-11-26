@@ -51,10 +51,10 @@
 
     <div class="card">
         <h2>Или собери конфигурацию</h2>
-        <p class="muted">Экспертный подбор: бюджет распределяется по компонентам, для каждой детали
-            ищутся 2–3 предложения с магазином и ссылкой, проверяются сокет, чипсет, TDP,
-            форм-фактор, длина видеокарты, высота кулера и мощность БП. Цены фиксируются на дату
-            запроса; если сайт блокирует парсер, предложение честно помечается как демо.</p>
+        <p class="muted">Для ПК — подбор совместимых деталей с 2–3 ценами на каждую. Для ноутбука —
+            подбор конкретных моделей с точным артикулом, сравнением бенчмарков, экрана,
+            автономности, портов и подводных камней. Цены фиксируются на дату запроса; если сайт
+            блокирует парсер, предложение честно помечается как демо.</p>
         <form method="get" th:action="@{/cheaper}">
             <input type="hidden" name="mode" value="build">
             <div class="grid">
@@ -104,12 +104,129 @@
                     <input id="builderRegion" name="region" th:value="${builderRegion}"
                            placeholder="Москва, Россия">
                 </div>
+                <div>
+                    <label for="builderScreen">Размер экрана (ноутбук)</label>
+                    <select id="builderScreen" name="screen">
+                        <option value="any" th:selected="${builderScreen == 'any'}">Любой</option>
+                        <option value="13_14" th:selected="${builderScreen == '13_14'}">13–14″</option>
+                        <option value="15_16" th:selected="${builderScreen == '15_16'}">15–16″</option>
+                        <option value="17_plus" th:selected="${builderScreen == '17_plus'}">17″+</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="builderOs">ОС (ноутбук)</label>
+                    <select id="builderOs" name="os">
+                        <option value="any" th:selected="${builderOs == 'any'}">Без разницы</option>
+                        <option value="windows" th:selected="${builderOs == 'windows'}">Windows</option>
+                        <option value="macos" th:selected="${builderOs == 'macos'}">macOS</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="builderRequirements">Особые требования (ноутбук)</label>
+                    <input id="builderRequirements" name="requirements" th:value="${builderRequirements}"
+                           placeholder="дискретная GPU, Thunderbolt, RAM 32, Asus, наличие в DNS">
+                </div>
             </div>
             <div class="form-actions"><button type="submit">Собрать и узнать цену</button></div>
         </form>
     </div>
 
     <p class="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="card" th:if="${laptopResult != null}">
+        <h2>Подбор ноутбука</h2>
+        <p th:text="${laptopResult.verdict}"></p>
+        <div class="build-total">
+            <div><span class="muted">Бюджет</span><strong th:text="${laptopResult.budget} + ' ₽'"></strong></div>
+            <div><span class="muted">Задача</span><strong th:text="${laptopResult.purpose}"></strong></div>
+            <div><span class="muted">Приоритет</span><strong th:text="${laptopResult.priority}"></strong></div>
+            <div><span class="muted">Экран</span><strong th:text="${laptopResult.screen}"></strong></div>
+            <div><span class="muted">ОС</span><strong th:text="${laptopResult.os}"></strong></div>
+            <div><span class="muted">Регион</span><strong th:text="${laptopResult.region}"></strong></div>
+            <div><span class="muted">Цены на</span><strong th:text="${laptopResult.pricedAt}"></strong></div>
+        </div>
+        <p th:if="${laptopResult.demoPrices}"><span class="badge">ДЕМО</span>
+            Часть цен расчётная — откройте источник и уточните наличие и гарантию.</p>
+
+        <h3>📊 Сравнительная таблица моделей</h3>
+        <div class="table-wrap build-offer-wrap">
+            <table class="build-offer-table">
+                <thead>
+                <tr>
+                    <th>Модель / артикул</th><th>CPU</th><th>GPU</th><th>RAM</th><th>SSD</th>
+                    <th>Экран</th><th>Цена</th><th>Магазин</th><th>Ссылка</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="model : ${laptopResult.models}">
+                    <td><strong th:text="${model.name}"></strong><br>
+                        <span class="muted" th:text="${model.sku}"></span></td>
+                    <td th:text="${model.cpu}"></td>
+                    <td th:text="${model.gpu}"></td>
+                    <td th:text="${model.ram}"></td>
+                    <td th:text="${model.ssd}"></td>
+                    <td th:text="${model.display}"></td>
+                    <td th:text="${model.price} + ' ₽'"></td>
+                    <td><span th:text="${model.store}"></span>
+                        <span class="badge" th:if="${model.demo}">ДЕМО</span>
+                        <span class="badge ok" th:if="${model.promo}">АКЦИЯ</span></td>
+                    <td><a th:href="${model.url}" target="_blank" rel="noopener noreferrer">Открыть</a></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>🏆 Топ-1 выбор</h3>
+        <div class="top-pick" th:if="${laptopResult.topPick != null}">
+            <div class="part-type">Лучший баланс под ваши требования</div>
+            <div class="part-name" th:text="${laptopResult.topPick.name}"></div>
+            <div class="muted" th:text="${laptopResult.topPick.config}"></div>
+            <div th:text="'Оценка ' + ${laptopResult.topPick.scoreLabel()} + ' · '
+                    + ${laptopResult.topPick.price} + ' ₽ · ' + ${laptopResult.topPick.store}"></div>
+            <div th:text="'Почему: ' + ${laptopResult.topPick.pros}"></div>
+            <div th:text="'Нюансы: ' + ${laptopResult.topPick.cons}"></div>
+            <a th:href="${laptopResult.topPick.url}" target="_blank" rel="noopener noreferrer"
+               th:text="${laptopResult.topPick.store} + ' — открыть предложение'"></a>
+        </div>
+
+        <h3>🥈 Альтернативы</h3>
+        <div class="builder-parts">
+            <div class="part-card" th:each="model : ${laptopResult.models}"
+                 th:if="${model != laptopResult.topPick}">
+                <div class="part-type" th:text="'Оценка ' + ${model.scoreLabel()}"></div>
+                <div class="part-name" th:text="${model.name}"></div>
+                <div class="part-spec" th:text="${model.config}"></div>
+                <div th:text="'Плюсы: ' + ${model.pros}"></div>
+                <div th:text="'Минусы: ' + ${model.cons}"></div>
+                <div class="muted" th:text="'Цена: ' + ${model.price} + ' ₽ · ' + ${model.store}"></div>
+            </div>
+        </div>
+
+        <h3>📈 Бенчмарки и реальные тесты автономности</h3>
+        <ul class="report-list">
+            <li th:each="line : ${laptopResult.benchmarks}" th:text="${line}"></li>
+        </ul>
+
+        <h3>⚠️ На что обратить внимание при покупке</h3>
+        <ul class="report-list">
+            <li th:each="line : ${laptopResult.buyingWarnings}" th:text="${line}"></li>
+        </ul>
+
+        <h3>🛒 Где купить дешевле</h3>
+        <ul class="report-list">
+            <li th:each="line : ${laptopResult.priceComparison}" th:text="${line}"></li>
+        </ul>
+
+        <h3>🔮 Прогноз на 3–5 лет</h3>
+        <p th:text="${laptopResult.forecast}"></p>
+
+        <div th:if="${!laptopResult.warnings.isEmpty()}">
+            <strong>Предупреждения:</strong>
+            <ul class="warning-list">
+                <li class="muted" th:each="warning : ${laptopResult.warnings}" th:text="${warning}"></li>
+            </ul>
+        </div>
+    </div>
 
     <div class="card" th:if="${buildResult != null}">
         <h2>Готовая конфигурация</h2>

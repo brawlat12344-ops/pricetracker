@@ -6,6 +6,9 @@ import com.example.pricetracker.dto.BuildRequest;
 import com.example.pricetracker.dto.BuildResponse;
 import com.example.pricetracker.dto.CheaperRequest;
 import com.example.pricetracker.dto.CheaperResponse;
+import com.example.pricetracker.dto.LaptopRequest;
+import com.example.pricetracker.dto.LaptopResponse;
+import com.example.pricetracker.laptop.LaptopService;
 import com.example.pricetracker.security.AuthCookie;
 import com.example.pricetracker.service.AuthService;
 import com.example.pricetracker.store.CheapSearchService;
@@ -26,17 +29,20 @@ public class WebController {
     private final CategoryCatalog categories;
     private final CheapSearchService cheaper;
     private final BuildService builder;
+    private final LaptopService laptops;
     private final int ttlSeconds;
 
     public WebController(AuthService auth,
                          CategoryCatalog categories,
                          CheapSearchService cheaper,
                          BuildService builder,
+                         LaptopService laptops,
                          @Value("${jwt.ttl-minutes:120}") int ttlMinutes) {
         this.auth = auth;
         this.categories = categories;
         this.cheaper = cheaper;
         this.builder = builder;
+        this.laptops = laptops;
         this.ttlSeconds = ttlMinutes * 60;
     }
 
@@ -77,6 +83,9 @@ public class WebController {
                           @RequestParam(defaultValue = "performance") String priority,
                           @RequestParam(required = false) String wishes,
                           @RequestParam(defaultValue = "Россия") String region,
+                          @RequestParam(defaultValue = "any") String screen,
+                          @RequestParam(defaultValue = "any") String os,
+                          @RequestParam(required = false) String requirements,
                           @RequestParam(required = false) Integer budget,
                           Model model) {
         model.addAttribute("categories", categories.definitions());
@@ -91,13 +100,21 @@ public class WebController {
         model.addAttribute("builderPriority", priority == null ? "performance" : priority);
         model.addAttribute("builderWishes", wishes == null ? "" : wishes);
         model.addAttribute("builderRegion", region == null || region.isBlank() ? "Россия" : region);
+        model.addAttribute("builderScreen", screen == null || screen.isBlank() ? "any" : screen);
+        model.addAttribute("builderOs", os == null || os.isBlank() ? "any" : os);
+        model.addAttribute("builderRequirements", requirements == null ? "" : requirements);
         model.addAttribute("builderBudget", budget == null ? 120000 : budget);
         model.addAttribute("result", null);
         model.addAttribute("buildResult", null);
+        model.addAttribute("laptopResult", null);
         model.addAttribute("error", "");
 
         try {
-            if ("build".equals(mode)) {
+            if ("build".equals(mode) && "laptop".equalsIgnoreCase(category)) {
+                LaptopResponse laptopsResult = laptops.select(new LaptopRequest(
+                        budget, purpose, priority, screen, os, requirements, region));
+                model.addAttribute("laptopResult", laptopsResult);
+            } else if ("build".equals(mode)) {
                 BuildResponse build = builder.build(new BuildRequest(
                         category, purpose, priority, wishes, region, budget));
                 model.addAttribute("buildResult", build);

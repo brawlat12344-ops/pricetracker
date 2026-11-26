@@ -11,8 +11,13 @@ Python, Node.js и Next.js не используются: страницы — �
 2. **Экспертный конфигуратор:** по бюджету, назначению, приоритету, пожеланиям и региону
    подбирается совместимая сборка ПК/ноутбука; для каждой детали ищутся 2–3 предложения
    с магазином, ценой, наличием и ссылкой.
+3. **Подбор ноутбука (`category=laptop`):** сравнение 3–5 конкретных моделей с артикулом,
+   бенчмарками, экраном, автономностью, портами, апгрейдом и подводными камнями;
+   отчёт включает топ-1, альтернативы, сравнение цен и прогноз на 3–5 лет.
+   Входные поля: бюджет, назначение, приоритет, размер экрана, ОС, особые требования, регион.
 
 Найденные карточки и собранные конфигурации — разовые отчёты; в отслеживание они не добавляются.
+Если магазины блокируют парсер, цены честно помечаются как демо и сопровождаются ссылкой на поиск.
 
 ## Запуск
 
@@ -139,6 +144,10 @@ curl.exe -s -X POST http://localhost/api/cheaper -H "Authorization: Bearer $toke
 $buildBody = '{"category":"pc","purpose":"game","priority":"performance","wishes":"","region":"Москва, Россия","budget":120000}'
 curl.exe -s -X POST http://localhost/api/build -H "Authorization: Bearer $token" `
   -H "Content-Type: application/json" -d $buildBody
+
+$laptopBody = '{"budget":90000,"purpose":"study","priority":"battery","screen":"13_14","os":"any","requirements":"","region":"Москва, Россия"}'
+curl.exe -s -X POST http://localhost/api/laptops -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" -d $laptopBody
 ```
 
 В ответе: `store`, `sourcePrice`, `sourceSpecs`, `items` (`store`, `title`, `url`, `price`,
@@ -149,6 +158,11 @@ curl.exe -s -X POST http://localhost/api/build -H "Authorization: Bearer $token"
 Ответ `/api/build` содержит `parts` (модель, цена, `offers` с магазином/ценой/ссылкой/наличием
 и флагами `demo`/`promo`), `totalPrice`, `budget`, `budgetDelta`, `score` (0–10), `rationale`,
 `assemblySteps`, `bottlenecks`, `alternative`, `pricedAt` и `warnings`.
+
+Ответ `/api/laptops` содержит `models` (точный `sku`, конфигурацию, CPU/GPU/RAM/SSD/экран,
+цену, магазин, ссылку, availability, warranty, `score10` (0–10), бенчмарки и тесты
+автономности, порты, апгрейд, плюсы/минусы), `topPick`, `verdict`, `benchmarks`,
+`buyingWarnings`, `priceComparison`, `forecast`, `pricedAt` и `warnings`.
 
 ### Эндпоинты
 
@@ -161,6 +175,7 @@ curl.exe -s -X POST http://localhost/api/build -H "Authorization: Bearer $token"
 | `GET` | `/api/categories` | темы и веса характеристик |
 | `POST` | `/api/cheaper` | найти ту же конфигурацию дешевле в магазинах |
 | `POST` | `/api/build` | собрать ПК/ноутбук, дать 2–3 цены на деталь и полный отчёт |
+| `POST` | `/api/laptops` | сравнить 3–5 конкретных моделей ноутбуков и выбрать топ-1 |
 | `GET` | `/actuator/health` | healthcheck Docker и nginx |
 
 ## Важное

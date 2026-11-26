@@ -158,8 +158,8 @@ public class PartPriceService {
         if (offer.price() == null || offer.price().signum() <= 0 || fallback.signum() <= 0) {
             return false;
         }
-        BigDecimal floor = fallback.multiply(BigDecimal.valueOf(0.45));
-        BigDecimal ceiling = fallback.multiply(BigDecimal.valueOf(2.0));
+        BigDecimal floor = fallback.multiply(BigDecimal.valueOf(0.55));
+        BigDecimal ceiling = fallback.multiply(BigDecimal.valueOf(1.60));
         if (offer.price().compareTo(floor) < 0 || offer.price().compareTo(ceiling) > 0) {
             return false;
         }
@@ -171,7 +171,15 @@ public class PartPriceService {
                 matches++;
             }
         }
-        return matches >= 1;
+        if (matches < 2) {
+            return false;
+        }
+        // Для точных моделей артикул/цифра в названии обязательны: иначе цена другой
+        // конфигурации той же серии выглядит «похожей» и завышает результат.
+        String exact = tokens.stream()
+                .filter(token -> token.length() >= 4 && token.matches(".*[0-9].*"))
+                .findFirst().orElse(null);
+        return exact == null || title.contains(exact);
     }
 
     private List<String> distinctTokens(String query) {

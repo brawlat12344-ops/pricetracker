@@ -6,8 +6,11 @@ import com.example.pricetracker.dto.BuildRequest;
 import com.example.pricetracker.dto.BuildResponse;
 import com.example.pricetracker.dto.CheaperRequest;
 import com.example.pricetracker.dto.CheaperResponse;
+import com.example.pricetracker.dto.LaptopRequest;
+import com.example.pricetracker.dto.LaptopResponse;
 import com.example.pricetracker.dto.LoginRequest;
 import com.example.pricetracker.dto.TokenResponse;
+import com.example.pricetracker.laptop.LaptopService;
 import com.example.pricetracker.service.AuthService;
 import com.example.pricetracker.store.CheapSearchService;
 import jakarta.validation.Valid;
@@ -26,15 +29,18 @@ public class ApiController {
     private final CategoryCatalog categories;
     private final CheapSearchService cheaper;
     private final BuildService builder;
+    private final LaptopService laptops;
 
     public ApiController(AuthService auth,
                          CategoryCatalog categories,
                          CheapSearchService cheaper,
-                         BuildService builder) {
+                         BuildService builder,
+                         LaptopService laptops) {
         this.auth = auth;
         this.categories = categories;
         this.cheaper = cheaper;
         this.builder = builder;
+        this.laptops = laptops;
     }
 
     @PostMapping("/auth/login")
@@ -55,5 +61,10 @@ public class ApiController {
     @PostMapping("/build")
     public BuildResponse build(@RequestBody BuildRequest request) {
         return builder.build(request);
+    }
+
+    @PostMapping("/laptops")
+    public LaptopResponse laptops(@RequestBody LaptopRequest request) {
+        return laptops.select(request);
     }
 }
