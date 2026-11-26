@@ -7,14 +7,21 @@ import com.example.pricetracker.dto.CheaperRequest;
 import com.example.pricetracker.dto.CheaperResponse;
 import com.example.pricetracker.dto.LaptopRequest;
 import com.example.pricetracker.dto.LaptopResponse;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpRequest;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +34,7 @@ import java.util.Map;
 public class CatalogClient {
 
     private final RestClient client;
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public CatalogClient(@Value("${services.catalog.url:http://catalog:8081}") String baseUrl) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -42,6 +50,7 @@ public class CatalogClient {
         List<CategoryCatalog.CategoryDef> body = client.get()
                 .uri("/internal/categories")
                 .retrieve()
+                .onStatus(this::isError, this::handleError)
                 .body(new ParameterizedTypeReference<>() {
                 });
         return body == null ? List.of() : body;
@@ -53,6 +62,7 @@ public class CatalogClient {
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .body(request)
                 .retrieve()
+                .onStatus(this::isError, this::handleError)
                 .body(CheaperResponse.class);
     }
 
@@ -62,6 +72,7 @@ public class CatalogClient {
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .body(request)
                 .retrieve()
+                .onStatus(this::isError, this::handleError)
                 .body(BuildResponse.class);
     }
 
@@ -71,6 +82,7 @@ public class CatalogClient {
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .body(request)
                 .retrieve()
+                .onStatus(this::isError, this::handleError)
                 .body(LaptopResponse.class);
     }
 
@@ -79,8 +91,33 @@ public class CatalogClient {
         Map<String, Object> body = client.get()
                 .uri("/internal/info")
                 .retrieve()
+                .onStatus(this::isError, this::handleError)
                 .body(new ParameterizedTypeReference<>() {
                 });
         return body == null ? Map.of("status", "unavailable") : body;
+    }
+
+    private boolean isError(HttpStatusCode status) {
+        return status.is4xxClientError() || status.is5xxServerError();
+    }
+
+    /** Достаёт message из JSON-ошибки catalog, чтобы в UI не попадал Whitelabel HTML. */
+    private void handleError(HttpRequest request, ClientHttpResponse response) throws IOException {
+        String body = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+        String message = null;
+        try {
+            JsonNode node = mapper.readTree(body);
+            if (node.hasNonNull("message")) {
+                message = node.get("message").asText();
+            } else if (node.hasNonNull("error")) {
+                message = node.get("error").asText();
+            }
+        } catch (Exception ignored) {
+            // Ответ не JSON — используем статус.
+        }
+        if (message == null || message.isBlank()) {
+            message = "catalog вернул HTTP " + response.getStatusCode().value();
+        }
+        throw new CatalogClientException(message);
     }
 }
