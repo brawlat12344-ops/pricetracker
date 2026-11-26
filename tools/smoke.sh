@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Smoke checks for CI: login, two builder reports and actuator metrics.
+# Smoke checks for CI: three-service topology, login, two reports and metrics.
 set -euo pipefail
 
-BASE="${BASE_URL:-http://localhost:8081}"
+BASE="${BASE_URL:-http://localhost:8083}"
+CATALOG="${CATALOG_URL:-http://localhost:8081}"
+PRICE="${PRICE_URL:-http://localhost:8082}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 COOKIE="$TMP/cookies.txt"
@@ -37,9 +39,17 @@ curl -fsS "$BASE/actuator/health" > "$TMP/health.json"
 grep -q '"status":"UP"' "$TMP/health.json"
 echo "health OK"
 
-curl -fsS -b "$COOKIE" "$BASE/actuator/metrics" > "$TMP/metrics.json"
-grep -q 'pt.cache.access' "$TMP/metrics.json"
-grep -q 'pt.store.requests' "$TMP/metrics.json"
+# gateway -> catalog -> price: один запрос доказывает, что все три сервиса общаются.
+curl -fsS -b "$COOKIE" "$BASE/api/topology" > "$TMP/topology.json"
+grep -q '"service":"gateway"' "$TMP/topology.json"
+grep -q '"service":"catalog"' "$TMP/topology.json"
+grep -q '"service":"price"' "$TMP/topology.json"
+echo "topology OK"
+
+curl -fsS "$CATALOG/actuator/metrics" > "$TMP/catalog-metrics.json"
+grep -q 'pt.cache.access' "$TMP/catalog-metrics.json"
+curl -fsS "$PRICE/actuator/metrics" > "$TMP/price-metrics.json"
+grep -q 'pt.store.requests' "$TMP/price-metrics.json"
 echo "metrics OK"
 
 echo "Smoke checks passed"

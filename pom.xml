@@ -102,6 +102,10 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Точка входа по умолчанию — migrate; сервисы выбирают свой main через loader.main. -->
+                    <mainClass>com.example.pricetracker.PriceTrackerApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>

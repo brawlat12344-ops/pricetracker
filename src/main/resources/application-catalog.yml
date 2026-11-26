@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: pricetracker-catalog
+
+server:
+  port: 8081
+
+services:
+  price:
+    url: ${PRICE_URL:http://price:8082}

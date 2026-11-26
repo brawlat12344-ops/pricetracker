@@ -27,8 +27,11 @@ jobs:
     env:
       POSTGRES_PASSWORD: ptpass
       JWT_SECRET: ci-secret-key-with-at-least-32-chars
-      APP_PORT: 8081
-      BASE_URL: http://localhost:8081
+      APP_PORT: 8083
+      GATEWAY_PORT: 8084
+      CATALOG_PORT: 8081
+      PRICE_PORT: 8082
+      BASE_URL: http://localhost:8083
     steps:
       - uses: actions/checkout@v4
       - name: Build images

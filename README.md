@@ -3,7 +3,9 @@
 ![PriceTracker — тёмный баннер](docs/assets/pricetracker-banner.png)
 
 Stack: **Java 17 + Spring Boot 3.3 + Thymeleaf + Flyway + PostgreSQL 16 + nginx**.
-Python, Node.js и Next.js не используются: страницы — серверные шаблоны, анимации — CSS.
+Приложение разбито на **три микросервиса** (`gateway` → `catalog` → `price`), которые общаются
+по HTTP JSON внутри сети `appnet`. Python, Node.js и Next.js не используются: страницы —
+серверные шаблоны, анимации — CSS.
 
 На странице `/cheaper` работают два режима:
 1. **Поиск дешевле:** по одной ссылке на товар в DNS-Shop, М.Видео, Ситилинке, Ozon,
@@ -38,6 +40,9 @@ JWT_SECRET=$jwtKey
 ACCESS_TOKEN_TTL_MINUTES=120
 SPEC_PROVIDER=mock
 APP_PORT=80
+GATEWAY_PORT=8080
+CATALOG_PORT=8081
+PRICE_PORT=8082
 "@ | Set-Content .env -Encoding utf8
 
 docker compose up --build -d
@@ -56,14 +61,33 @@ docker compose ps -a
 `docker compose up -d`, дождётся `{"status":"UP"}` и откроет `http://localhost`.
 Без браузера: `.\PriceTracker.exe --no-open`. Исходник: `tools/launcher/README.md`.
 
-## Сервисы
+## Три микросервиса
 
-| Сервис | Папка | Ответственность | API |
+```text
+Браузер → nginx :80 → gateway :8080 → catalog :8081 → price :8082 → магазины
+                          │                │
+                          └── JPA: users   └── HTTP JSON /internal/**
+```
+
+| Сервис | Порт | Ответственность | API |
 |---|---|---|---|
-| `db` | `services/db` | PostgreSQL 16, volume `db_data` | SQL :5432 |
-| `migrate` | `services/migrate` | Flyway V1–V4, one-shot | CLI / Flyway |
-| `app` | `services/app` | REST API + Thymeleaf UI + поиск дешевле и конфигуратор | `/api/**`, `/cheaper`, `/actuator/**` |
-| `nginx` | `services/nginx` | reverse proxy, точка входа :80 | `/`, `/api/` |
+| `gateway` | `8080` | Thymeleaf UI, JWT/куки, фасад `/api/**` | `/cheaper`, `/api/**`, `/actuator/**` |
+| `catalog` | `8081` | каталоги, строгий скоринг, отчёты, кэш | `/internal/**`, `/actuator/**` |
+| `price` | `8082` | только он ходит в магазины; цены, breaker, парсинг | `/internal/**`, `/actuator/**` |
+| `db` | `5432` | PostgreSQL 16, volume `db_data`, только `users` | SQL |
+| `migrate` | — | Flyway V1–V4, one-shot | CLI / Flyway |
+| `nginx` | `80` | reverse proxy, единственная публичная точка | `/`, `/cheaper`, `/api/` |
+
+Общение по HTTP: `gateway` вызывает `catalog` через `CatalogClient`, `catalog` вызывает `price`
+через `PriceClient`. Внутренние `/internal/**` не проксируются nginx и доступны только в
+`appnet`. Живая проверка цепочки — `GET /api/topology` (после логина): ответ содержит
+`gateway → catalog → price` со статусом `UP`.
+
+Один JAR собирается для всех трёх сервисов; точка входа выбирается через
+`-Dloader.main=...` и `PropertiesLauncher` (`GatewayApplication`, `CatalogApplication`,
+`PriceApplication`). Профили `gateway`, `catalog`, `price` ограничивают компонентное
+сканирование, поэтому бины сервисов не смешиваются. Spring Security включена только в
+`gateway`; `migrate` использует `PriceTrackerApplication` как отдельную точку входа.
 
 У каждого сервиса есть `Dockerfile` и `README.md` в `services/<имя>/`.
 
@@ -165,18 +189,21 @@ docker compose ps -a
 
 ```powershell
 docker compose ps -a
-# pt-app Up (healthy), pt-db Up (healthy), pt-migrate Exited (0), pt-nginx Up (healthy)
+# pt-gateway, pt-catalog, pt-price — Up (healthy)
+# pt-db — Up (healthy), pt-migrate — Exited (0), pt-nginx — Up (healthy)
 
-curl.exe http://localhost/actuator/health
+curl.exe http://localhost/actuator/health                  # gateway через nginx
+curl.exe http://localhost:8081/actuator/health            # catalog
+curl.exe http://localhost:8082/actuator/health            # price
 # {"status":"UP","groups":["liveness","readiness"]}
 ```
 
-Кэш и breaker видны в метриках:
+Кэш живёт в `catalog`, breaker и метрики магазинов — в `price`:
 
 ```powershell
-curl.exe http://localhost/actuator/metrics/pt.cache.access
-curl.exe 'http://localhost/actuator/metrics/pt.cache.access?tag=result:hit'
-curl.exe 'http://localhost/actuator/metrics/pt.store.requests?tag=outcome:blocked'
+curl.exe http://localhost:8081/actuator/metrics/pt.cache.access
+curl.exe 'http://localhost:8081/actuator/metrics/pt.cache.access?tag=result:hit'
+curl.exe 'http://localhost:8082/actuator/metrics/pt.store.requests?tag=outcome:blocked'
 ```
 
 Готовый демо-прогон сохраняет HTML и JSON трёх сценариев в `artifacts/demo`
@@ -187,7 +214,8 @@ curl.exe 'http://localhost/actuator/metrics/pt.store.requests?tag=outcome:blocke
 ```
 
 В GitHub Actions (`.github/workflows/ci.yml`) на каждый push в `main` запускаются
-`mvn test` и `docker compose` + `bash tools/smoke.sh`: логин, две сборки, health и метрики.
+`mvn test` и `docker compose` + `bash tools/smoke.sh`: логин, две сборки, health,
+`/api/topology` (доказательство цепочки gateway → catalog → price) и метрики.
 
 Вход и поиск через API:
 
@@ -235,6 +263,7 @@ curl.exe -s -X POST http://localhost/api/laptops -H "Authorization: Bearer $toke
 | `POST` | `/api/cheaper` | найти ту же конфигурацию дешевле в магазинах |
 | `POST` | `/api/build` | собрать ПК/ноутбук, дать 2–3 цены на деталь и полный отчёт |
 | `POST` | `/api/laptops` | сравнить 3–5 конкретных моделей ноутбуков и выбрать топ-1 |
+| `GET` | `/api/topology` | живая цепочка gateway → catalog → price |
 | `GET` | `/actuator/health` | healthcheck Docker и nginx |
 | `GET` | `/actuator/metrics` | счётчики кэша, breaker'а и латентности магазинов |
 

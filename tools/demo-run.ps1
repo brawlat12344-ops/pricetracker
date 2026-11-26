@@ -1,5 +1,7 @@
 param(
     [string]$BaseUrl = 'http://localhost',
+    [string]$CatalogUrl = 'http://localhost:8081',
+    [string]$PriceUrl = 'http://localhost:8082',
     [string]$OutDir = 'artifacts/demo'
 )
 
@@ -75,10 +77,22 @@ $laptopPageUrl = "$BaseUrl/cheaper?mode=build&category=laptop&purpose=study&prio
 $summary.Add("build-pc.html : HTTP " + (Save-Response $pcPageUrl (Join-Path $out 'build-pc.html')))
 $summary.Add("laptop.html : HTTP " + (Save-Response $laptopPageUrl (Join-Path $out 'laptop.html')))
 
+# Доказательство межсервисного взаимодействия: gateway -> catalog -> price.
+$topologyCode = Save-Response "$BaseUrl/api/topology" (Join-Path $out 'topology.json')
+$summary.Add("topology.json : HTTP $topologyCode")
+
 $healthCode = Save-Response "$BaseUrl/actuator/health" (Join-Path $out 'health.json')
 $metricsCode = Save-Response "$BaseUrl/actuator/metrics" (Join-Path $out 'metrics.json')
+$catalogHealthCode = Save-Response "$CatalogUrl/actuator/health" (Join-Path $out 'catalog-health.json')
+$priceHealthCode = Save-Response "$PriceUrl/actuator/health" (Join-Path $out 'price-health.json')
+$catalogMetricsCode = Save-Response "$CatalogUrl/actuator/metrics" (Join-Path $out 'catalog-metrics.json')
+$priceMetricsCode = Save-Response "$PriceUrl/actuator/metrics" (Join-Path $out 'price-metrics.json')
 $summary.Add("health.json : HTTP $healthCode")
 $summary.Add("metrics.json : HTTP $metricsCode")
+$summary.Add("catalog-health.json : HTTP $catalogHealthCode")
+$summary.Add("price-health.json : HTTP $priceHealthCode")
+$summary.Add("catalog-metrics.json : HTTP $catalogMetricsCode")
+$summary.Add("price-metrics.json : HTTP $priceMetricsCode")
 
 foreach ($file in Get-ChildItem -File $out | Sort-Object Name) {
     $summary.Add(("{0,-24} {1,8} bytes" -f $file.Name, $file.Length))

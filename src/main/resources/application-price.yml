@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: pricetracker-price
+
+server:
+  port: 8082

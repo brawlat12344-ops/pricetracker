@@ -1,6 +1,5 @@
 package com.example.pricetracker.web;
 
-import com.example.pricetracker.builder.BuildService;
 import com.example.pricetracker.compare.CategoryCatalog;
 import com.example.pricetracker.dto.BuildRequest;
 import com.example.pricetracker.dto.BuildResponse;
@@ -8,10 +7,9 @@ import com.example.pricetracker.dto.CheaperRequest;
 import com.example.pricetracker.dto.CheaperResponse;
 import com.example.pricetracker.dto.LaptopRequest;
 import com.example.pricetracker.dto.LaptopResponse;
-import com.example.pricetracker.laptop.LaptopService;
+import com.example.pricetracker.gateway.CatalogClient;
 import com.example.pricetracker.security.AuthCookie;
 import com.example.pricetracker.service.AuthService;
-import com.example.pricetracker.store.CheapSearchService;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.math.BigDecimal;
@@ -28,23 +26,14 @@ import org.springframework.web.server.ResponseStatusException;
 public class WebController {
 
     private final AuthService auth;
-    private final CategoryCatalog categories;
-    private final CheapSearchService cheaper;
-    private final BuildService builder;
-    private final LaptopService laptops;
+    private final CatalogClient catalog;
     private final int ttlSeconds;
 
     public WebController(AuthService auth,
-                         CategoryCatalog categories,
-                         CheapSearchService cheaper,
-                         BuildService builder,
-                         LaptopService laptops,
+                         CatalogClient catalog,
                          @Value("${jwt.ttl-minutes:120}") int ttlMinutes) {
         this.auth = auth;
-        this.categories = categories;
-        this.cheaper = cheaper;
-        this.builder = builder;
-        this.laptops = laptops;
+        this.catalog = catalog;
         this.ttlSeconds = ttlMinutes * 60;
     }
 
@@ -91,7 +80,7 @@ public class WebController {
                           @RequestParam(required = false) String requirements,
                           @RequestParam(required = false) Integer budget,
                           Model model) {
-        model.addAttribute("categories", categories.definitions());
+        model.addAttribute("categories", catalog.categories());
         model.addAttribute("cheaperUrl", url == null ? "" : url);
         model.addAttribute("cheaperCategory", category);
         model.addAttribute("cheaperTitle", title == null ? "" : title);
@@ -115,15 +104,15 @@ public class WebController {
 
         try {
             if ("build".equals(mode) && "laptop".equalsIgnoreCase(category)) {
-                LaptopResponse laptopsResult = laptops.select(new LaptopRequest(
+                LaptopResponse laptopsResult = catalog.laptops(new LaptopRequest(
                         budget, purpose, priority, screen, os, requirements, region));
                 model.addAttribute("laptopResult", laptopsResult);
             } else if ("build".equals(mode)) {
-                BuildResponse build = builder.build(new BuildRequest(
+                BuildResponse build = catalog.build(new BuildRequest(
                         category, purpose, priority, wishes, region, budget));
                 model.addAttribute("buildResult", build);
             } else if (url != null && !url.isBlank()) {
-                CheaperResponse result = cheaper.find(new CheaperRequest(
+                CheaperResponse result = catalog.cheaper(new CheaperRequest(
                         url, category, title, limit, crossStore == null || crossStore, sourcePrice));
                 model.addAttribute("result", result);
             }

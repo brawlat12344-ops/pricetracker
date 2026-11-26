@@ -14,7 +14,9 @@ docker compose up --build -d
 ```text
 ✔ Image pricetracker-db        Built
 ✔ Image pricetracker-migrate   Built
-✔ Image pricetracker-app       Built
+✔ Image pricetracker-price     Built
+✔ Image pricetracker-catalog   Built
+✔ Image pricetracker-gateway   Built
 ✔ Image pricetracker-nginx     Built
 ✔ Network pricetracker_appnet  Created
 ✔ Volume pricetracker_db_data  Created
@@ -28,23 +30,30 @@ docker compose ps -a
 
 ```text
 NAME         IMAGE                  STATUS                      PORTS
-pt-app       pricetracker-app       Up (healthy)                8080/tcp
+pt-catalog   pricetracker-catalog   Up (healthy)                0.0.0.0:8081->8081/tcp
 pt-db        pricetracker-db        Up (healthy)                0.0.0.0:5432->5432/tcp
+pt-gateway   pricetracker-gateway   Up (healthy)                0.0.0.0:8080->8080/tcp
 pt-migrate   pricetracker-migrate   Exited (0) 30 seconds ago
 pt-nginx     pricetracker-nginx     Up (healthy)                0.0.0.0:80->80/tcp
+pt-price     pricetracker-price     Up (healthy)                0.0.0.0:8082->8082/tcp
 ```
 
-`Exited (0)` у `pt-migrate` — успешная одноразовая миграция. `pt-worker` в системе нет.
+`Exited (0)` у `pt-migrate` — успешная одноразовая миграция. Порядок запуска задан цепочкой
+`price` → `catalog` → `gateway` → `nginx`. `pt-worker` и старого `pt-app` в системе нет.
 
-## 3. Healthcheck через nginx
+## 3. Healthcheck всех трёх сервисов
 
 ```powershell
-curl.exe http://localhost/actuator/health
+curl.exe http://localhost/actuator/health           # gateway через nginx
+curl.exe http://localhost:8081/actuator/health      # catalog
+curl.exe http://localhost:8082/actuator/health      # price
 ```
 
 ```json
 {"status":"UP","groups":["liveness","readiness"]}
 ```
+
+Порты `8081`/`8082` нужны только для проверок; nginx их не проксирует.
 
 ## 4. Миграции и схема БД
 
@@ -68,7 +77,7 @@ docker exec pt-db psql -U ptuser -d pricetracker -c "\dt"
 ## 5. Вход
 
 ```powershell
-$base = "http://localhost/api"
+$base = "http://localhost"
 
 $token = (curl.exe -s -X POST "$base/api/auth/login" `
   -H "Content-Type: application/json" `
@@ -86,6 +95,25 @@ curl.exe -s "$base/api/categories" -H "Authorization: Bearer $token"
 
 ```json
 [{"key":"laptop","label":"Ноутбуки",...},{"key":"phone","label":"Телефоны",...},{"key":"headphones","label":"Наушники",...},{"key":"pc","label":"Сборка ПК",...}]
+```
+
+### Межсервисное взаимодействие: gateway → catalog → price
+
+```powershell
+curl.exe -s "$base/api/topology" -H "Authorization: Bearer $token"
+```
+
+```json
+{"service":"gateway","catalog":{"service":"catalog","price":{"service":"price","status":"UP"}}}
+```
+
+Один запрос проходит через все три JVM-процесса: `gateway` дёргает `catalog` по HTTP,
+`catalog` — `price`. Это основное доказательство, что это микросервисы, а не один монолит.
+Внутренние адреса можно показать отдельно:
+
+```powershell
+curl.exe -s http://localhost:8081/internal/info   # {"service":"catalog","price":{"service":"price","status":"UP"}}
+curl.exe -s http://localhost:8082/internal/info   # {"service":"price","status":"UP"}
 ```
 
 ## 6. Поиск той же сборки дешевле
@@ -207,8 +235,8 @@ curl.exe -s http://localhost/cheaper -H "Cookie: pricetracker_token=$token"
 ## 9. Кэш, метрики и CI
 
 ```powershell
-curl.exe http://localhost/actuator/metrics/pt.cache.access
-curl.exe 'http://localhost/actuator/metrics/pt.store.requests?tag=outcome:blocked'
+curl.exe http://localhost:8081/actuator/metrics/pt.cache.access          # catalog
+curl.exe 'http://localhost:8082/actuator/metrics/pt.store.requests?tag=outcome:blocked'  # price
 .\tools\demo-run.ps1
 ```
 
@@ -219,19 +247,22 @@ curl.exe 'http://localhost/actuator/metrics/pt.store.requests?tag=outcome:blocke
 - пустая SPA-оболочка фиксируется как `outcome=empty`, но цепь не размыкается;
 - `mvn test` — 9 тестов, включая `CheapLinksTest`: короткий поисковый запрос, рабочий URL
   М.Видео и необязательное поле `sourcePrice`;
-- GitHub Actions: `mvn test` → `docker compose build/up` → `bash tools/smoke.sh`;
+- GitHub Actions: `mvn test` → `docker compose build/up` → `bash tools/smoke.sh`; smoke дополнительно
+  проверяет `/api/topology` и метрики `catalog`/`price`, то есть реальную связность трёх сервисов;
 - `tools/demo-run.ps1` сохраняет `login.html`, `cheaper.json`, `cheaper-priced.json`, `build-pc.json/html`,
-  `laptop.json/html`, `health.json`, `metrics.json` и `summary.txt` в `artifacts/demo`.
+  `laptop.json/html`, `topology.json`, `health.json`, `metrics.json`, `catalog-health.json`,
+  `price-health.json`, `catalog-metrics.json`, `price-metrics.json` и `summary.txt` в `artifacts/demo`.
 
 ## 10. Что фотографировать
 
-1. Вывод `docker compose ps -a` (четыре сервиса, без воркера).
-2. Вывод `curl.exe http://localhost/actuator/health`.
-3. Вывод `POST /api/cheaper` с `store`, `sourcePrice`, `items` и `warnings`.
-4. Страницу `/cheaper` с формой, коротким вердиктом, скидками и 10-балльной таблицей оценок.
-5. Вывод `POST /api/build` или страницу `/cheaper?mode=build...` с таблицей предложений по деталям,
+1. Вывод `docker compose ps -a` (gateway, catalog, price, db, migrate, nginx; без воркера).
+2. Вывод трёх healthcheck'ов: `:80`, `:8081`, `:8082`.
+3. Вывод `GET /api/topology` с цепочкой gateway → catalog → price.
+4. Вывод `POST /api/cheaper` с `store`, `sourcePrice`, `items` и `warnings`.
+5. Страницу `/cheaper` с формой, коротким вердиктом, скидками и 10-балльной таблицей оценок.
+6. Вывод `POST /api/build` или страницу `/cheaper?mode=build...` с таблицей предложений по деталям,
    инструкцией сборки и альтернативной конфигурацией.
-6. Вывод `docker exec pt-db psql ... \dt` — только `users` и Flyway-история.
-7. Вывод `curl.exe http://localhost/actuator/metrics/pt.cache.access` после двух одинаковых
+7. Вывод `docker exec pt-db psql ... \dt` — только `users` и Flyway-история.
+8. Вывод `curl.exe http://localhost:8081/actuator/metrics/pt.cache.access` после двух одинаковых
    запросов: есть и `miss`, и `hit`.
-8. Папка `artifacts/demo` после `.\tools\demo-run.ps1` — доказательства для трёх сценариев.
+9. Папка `artifacts/demo` после `.\tools\demo-run.ps1` — доказательства для трёх сценариев.
