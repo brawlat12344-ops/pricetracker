@@ -24,6 +24,7 @@ public class StoreOffersSource {
     private final StoreRegistry stores;
     private final QueryExtractor queries;
     private final StoreProductParser parser;
+    private final StoreBreaker breaker;
     private final HttpClient client = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(8))
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -34,10 +35,12 @@ public class StoreOffersSource {
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
 
-    public StoreOffersSource(StoreRegistry stores, QueryExtractor queries, StoreProductParser parser) {
+    public StoreOffersSource(StoreRegistry stores, QueryExtractor queries,
+                             StoreProductParser parser, StoreBreaker breaker) {
         this.stores = stores;
         this.queries = queries;
         this.parser = parser;
+        this.breaker = breaker;
     }
 
     public Result search(String sourceUrl, String title, int limit, boolean crossStore,
@@ -95,8 +98,14 @@ public class StoreOffersSource {
     private void searchStore(StoreRegistry.Store store, String query, String host, int limit,
                              List<StoreProductParser.Offer> offers, Set<String> seen,
                              List<String> warnings, HttpClient http, Duration timeout) {
+        if (!breaker.allow(store.key())) {
+            warnings.add(store.label() + ": временно пропущен — цепь разомкнута после повторных блокировок.");
+            return;
+        }
+        long started = System.nanoTime();
         try {
             String html = fetch(stores.searchUrl(store, query, host), http, timeout);
+            breaker.latency(store.key(), started);
             List<StoreProductParser.Offer> parsed = parser.parse(html, store.key(), store.label(), limit);
             int added = 0;
             for (StoreProductParser.Offer offer : parsed) {
@@ -106,9 +115,18 @@ public class StoreOffersSource {
                 }
             }
             if (added == 0) {
+                breaker.failure(store.key(), "empty");
                 warnings.add(store.label() + ": карточки с ценой не найдены (сайт может отдавать пустую оболочку SPA).");
+            } else {
+                breaker.success(store.key());
             }
+        } catch (StoreFetchException ex) {
+            breaker.latency(store.key(), started);
+            breaker.failure(store.key(), ex.status() == 0 ? "error" : "blocked");
+            warnings.add(store.label() + ": поиск недоступен — " + ex.getMessage());
         } catch (RuntimeException ex) {
+            breaker.latency(store.key(), started);
+            breaker.failure(store.key(), "error");
             warnings.add(store.label() + ": поиск недоступен — " + ex.getMessage());
         }
     }
@@ -121,18 +139,33 @@ public class StoreOffersSource {
                 .build();
         try {
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 202) {
-                throw new IllegalStateException("страница проверки бота (HTTP 202)");
+            int status = response.statusCode();
+            if (status == 202) {
+                throw new StoreFetchException(status, "страница проверки бота (HTTP 202)");
             }
-            if (response.statusCode() / 100 != 2) {
-                throw new IllegalStateException("HTTP " + response.statusCode());
+            if (status / 100 != 2) {
+                throw new StoreFetchException(status, "HTTP " + status);
             }
             return response.body();
         } catch (IOException e) {
-            throw new IllegalStateException("сетевая ошибка: " + e.getMessage(), e);
+            throw new StoreFetchException(0, "сетевая ошибка: " + e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("запрос прерван", e);
+            throw new StoreFetchException(0, "запрос прерван");
+        }
+    }
+
+    /** Код ответа нужен breaker'у, чтобы отличить блокировку от сетевой ошибки. */
+    private static final class StoreFetchException extends RuntimeException {
+        private final int status;
+
+        private StoreFetchException(int status, String message) {
+            super(message);
+            this.status = status;
+        }
+
+        private int status() {
+            return status;
         }
     }
 

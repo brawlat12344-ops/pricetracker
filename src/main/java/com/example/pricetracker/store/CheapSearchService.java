@@ -1,5 +1,7 @@
 package com.example.pricetracker.store;
 
+import com.example.pricetracker.cache.CacheKeys;
+import com.example.pricetracker.cache.ResponseCache;
 import com.example.pricetracker.compare.CategoryCatalog;
 import com.example.pricetracker.compare.ComparisonService;
 import com.example.pricetracker.compare.ComparisonService.Evaluation;
@@ -40,6 +42,7 @@ public class CheapSearchService {
     private final ComparisonService comparisons;
     private final SpecProviderRegistry specProviders;
     private final HtmlPriceProvider htmlPrice;
+    private final ResponseCache cache;
 
     public CheapSearchService(StoreRegistry stores,
                               StoreOffersSource offersSource,
@@ -50,7 +53,8 @@ public class CheapSearchService {
                               CategoryCatalog catalog,
                               ComparisonService comparisons,
                               SpecProviderRegistry specProviders,
-                              HtmlPriceProvider htmlPrice) {
+                              HtmlPriceProvider htmlPrice,
+                              ResponseCache cache) {
         this.stores = stores;
         this.offersSource = offersSource;
         this.demoSource = demoSource;
@@ -61,9 +65,17 @@ public class CheapSearchService {
         this.comparisons = comparisons;
         this.specProviders = specProviders;
         this.htmlPrice = htmlPrice;
+        this.cache = cache;
     }
 
     public CheaperResponse find(CheaperRequest request) {
+        String key = CacheKeys.key("cheaper",
+                CacheKeys.url(request.url()), request.categoryOrPc(), request.title(),
+                request.limitOrDefault(), request.crossStore());
+        return cache.get("cheaper", key, CheaperResponse.class, () -> findUncached(request));
+    }
+
+    private CheaperResponse findUncached(CheaperRequest request) {
         String category = request.categoryOrPc();
         if (!catalog.exists(category)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Неизвестная категория: " + category);

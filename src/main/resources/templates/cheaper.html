@@ -19,6 +19,7 @@
     </script>
     <link rel="stylesheet" th:href="@{/style.css}">
     <script th:src="@{/theme.js}" defer></script>
+    <script th:src="@{/filter.js}" defer></script>
 </head>
 <body>
 <div th:replace="~{fragments/theme-toggle :: themeToggle}"></div>
@@ -149,6 +150,15 @@
 
     <p class="error" th:if="${error}" th:text="${error}"></p>
 
+    <div class="card filter-bar"
+         th:if="${result != null or buildResult != null or laptopResult != null}">
+        <label class="inline-choice">
+            <input id="real-only" type="checkbox"> Только реальные цены
+        </label>
+        <span class="muted" id="real-only-hint">Демо-цены видны и помечены бейджем ДЕМО; ссылка ведёт на реальный поиск.</span>
+        <p class="muted" id="real-only-empty" hidden>Проверяемых цен в этом отчёте нет: магазины блокируют парсер. Отключите фильтр, чтобы увидеть демо-расчёт со ссылками на реальный поиск.</p>
+    </div>
+
     <div class="card" th:if="${laptopResult != null}">
         <h2>Подбор ноутбука</h2>
         <p th:text="${laptopResult.verdict}"></p>
@@ -174,7 +184,8 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="model : ${laptopResult.models}">
+                <tr th:each="model : ${laptopResult.models}"
+                    th:classappend="${model.demo} ? 'is-demo' : ''">
                     <td><strong th:text="${model.name}"></strong><br>
                         <span class="muted" th:text="${model.sku}"></span></td>
                     <td th:text="${model.cpu}"></td>
@@ -217,6 +228,11 @@
                 <div class="muted" th:text="'Цена: ' + ${model.price} + ' ₽ · ' + ${model.store}"></div>
             </div>
         </div>
+
+        <h3>🧠 Как считалась оценка</h3>
+        <ul class="report-list">
+            <li th:each="line : ${laptopResult.scoreExplanation}" th:text="${line}"></li>
+        </ul>
 
         <h3>📈 Бенчмарки и реальные тесты автономности</h3>
         <ul class="report-list">
@@ -273,7 +289,8 @@
                 </tr>
                 </thead>
                 <tbody th:each="part : ${buildResult.parts}">
-                <tr th:each="offer, iter : ${part.offers}">
+                <tr th:each="offer, iter : ${part.offers}"
+                    th:classappend="${offer.demo} ? 'is-demo' : ''">
                     <td th:if="${iter.index == 0}" th:rowspan="${part.offers.size()}"
                         th:text="${part.label}"></td>
                     <td th:if="${iter.index == 0}" th:rowspan="${part.offers.size()}"
@@ -300,6 +317,11 @@
         <ol class="report-list">
             <li th:each="line : ${buildResult.rationale}" th:text="${line}"></li>
         </ol>
+
+        <h3>🧠 Как считались веса и выбор CPU/GPU</h3>
+        <ul class="report-list">
+            <li th:each="line : ${buildResult.weightExplanation}" th:text="${line}"></li>
+        </ul>
 
         <h3>🔧 Пошаговая инструкция сборки</h3>
         <ol class="report-list">

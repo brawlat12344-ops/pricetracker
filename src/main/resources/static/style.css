@@ -22,6 +22,7 @@
   --pattern-opacity:.12; --pattern-color:#8b5cf6;
 }
 * { box-sizing:border-box; }
+[hidden] { display:none !important; }
 html {
   background:var(--bg); scroll-behavior:smooth;
   transition:background-color var(--dur) ease;
@@ -145,6 +146,12 @@ main > .card:nth-child(2) { animation-delay:.06s; }
 main > .card:nth-child(3) { animation-delay:.12s; }
 main > .card:nth-child(4) { animation-delay:.18s; }
 main > .card:nth-child(5) { animation-delay:.24s; }
+.filter-bar {
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:12px 18px; margin-bottom:16px;
+}
+.filter-bar .inline-choice { font-size:14px; }
+.filter-bar .muted { font-size:13px; }
 .grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
 label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
 input, select {

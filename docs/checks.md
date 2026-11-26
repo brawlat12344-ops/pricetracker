@@ -191,9 +191,30 @@ curl.exe -s http://localhost/cheaper -H "Cookie: pricetracker_token=$token"
 - фон страниц — сплошной цвет (`--bg`) и лёгкий CSS-узор: точки в светлой теме, диагональные
   штрихи в тёмной; тяжёлых SVG-изолиний и `background-attachment: fixed` нет;
 - кнопка темы в правом верхнем углу переключает `data-theme`, сохраняет выбор в `localStorage`
-  и учитывает системную тему при первом визите; переходы 200 мс через CSS-переменные.
+  и учитывает системную тему при первом визите; переходы 200 мс через CSS-переменные;
+- переключатель «Только реальные цены» скрывает демо-строки/колонки; если реальных цен нет,
+  показывается сообщение, а не пустая таблица;
+- в отчёте ПК есть раздел «🧠 Как считались веса и выбор CPU/GPU», у ноутбуков —
+  «🧠 Как считалась оценка» с базовыми весами и усиливаниями под задачу/приоритет.
 
-## 9. Что фотографировать
+## 9. Кэш, метрики и CI
+
+```powershell
+curl.exe http://localhost/actuator/metrics/pt.cache.access
+curl.exe 'http://localhost/actuator/metrics/pt.store.requests?tag=outcome:blocked'
+.\tools\demo-run.ps1
+```
+
+- первый вызов `/api/build` или `/api/laptops` считается `miss`, второй с теми же параметрами —
+  `hit` и отвечает быстрее; TTL 12 минут настраивается через `CACHE_TTL_MINUTES`;
+- при повторных HTTP 401/403/429/202 или сетевых ошибках `pt.store.circuit` получает событие
+  `open`, а `pt.store.breaker.open` равен `1`; через cooldown делается пробный запрос;
+- пустая SPA-оболочка фиксируется как `outcome=empty`, но цепь не размыкается;
+- GitHub Actions: `mvn test` → `docker compose build/up` → `bash tools/smoke.sh`;
+- `tools/demo-run.ps1` сохраняет `login.html`, `cheaper.json`, `build-pc.json/html`,
+  `laptop.json/html`, `health.json`, `metrics.json` и `summary.txt` в `artifacts/demo`.
+
+## 10. Что фотографировать
 
 1. Вывод `docker compose ps -a` (четыре сервиса, без воркера).
 2. Вывод `curl.exe http://localhost/actuator/health`.
@@ -202,3 +223,6 @@ curl.exe -s http://localhost/cheaper -H "Cookie: pricetracker_token=$token"
 5. Вывод `POST /api/build` или страницу `/cheaper?mode=build...` с таблицей предложений по деталям,
    инструкцией сборки и альтернативной конфигурацией.
 6. Вывод `docker exec pt-db psql ... \dt` — только `users` и Flyway-история.
+7. Вывод `curl.exe http://localhost/actuator/metrics/pt.cache.access` после двух одинаковых
+   запросов: есть и `miss`, и `hit`.
+8. Папка `artifacts/demo` после `.\tools\demo-run.ps1` — доказательства для трёх сценариев.

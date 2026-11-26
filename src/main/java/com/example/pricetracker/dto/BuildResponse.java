@@ -22,6 +22,7 @@ public record BuildResponse(
         String verdict,
         List<String> warnings,
         List<String> rationale,
+        List<String> weightExplanation,
         List<String> assemblySteps,
         List<String> bottlenecks,
         BuildVariant alternative,

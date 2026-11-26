@@ -33,16 +33,25 @@ jwt:
 
 pricetracker:
   spec-provider: ${SPEC_PROVIDER:mock}
+  cache:
+    ttl-minutes: ${CACHE_TTL_MINUTES:12}
+    max-entries: ${CACHE_MAX_ENTRIES:200}
+  breaker:
+    failure-threshold: ${BREAKER_FAILURE_THRESHOLD:3}
+    cooldown-seconds: ${BREAKER_COOLDOWN_SECONDS:60}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics
   endpoint:
     health:
       probes:
         enabled: true
+  metrics:
+    tags:
+      application: pricetracker
 
 logging:
   level:

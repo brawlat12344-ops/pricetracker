@@ -1,5 +1,7 @@
 package com.example.pricetracker.laptop;
 
+import com.example.pricetracker.cache.CacheKeys;
+import com.example.pricetracker.cache.ResponseCache;
 import com.example.pricetracker.builder.PartPriceService;
 import com.example.pricetracker.dto.BuildResponse.ComponentOffer;
 import com.example.pricetracker.dto.LaptopRequest;
@@ -25,13 +27,22 @@ public class LaptopService {
 
     private final LaptopCatalog catalog;
     private final PartPriceService prices;
+    private final ResponseCache cache;
 
-    public LaptopService(LaptopCatalog catalog, PartPriceService prices) {
+    public LaptopService(LaptopCatalog catalog, PartPriceService prices, ResponseCache cache) {
         this.catalog = catalog;
         this.prices = prices;
+        this.cache = cache;
     }
 
     public LaptopResponse select(LaptopRequest request) {
+        String key = CacheKeys.key("laptop", request.budgetOrDefault(), request.purposeOrBalanced(),
+                request.priorityOrPerformance(), request.screenOrAny(), request.osOrAny(),
+                request.requirementsOrEmpty(), request.regionOrRussia());
+        return cache.get("laptop", key, LaptopResponse.class, () -> selectUncached(request));
+    }
+
+    private LaptopResponse selectUncached(LaptopRequest request) {
         int budget = request.budgetOrDefault();
         String purpose = request.purposeOrBalanced();
         String priority = request.priorityOrPerformance();
@@ -167,7 +178,9 @@ public class LaptopService {
         return new LaptopResponse(
                 budget, purposeLabel(purpose), priorityLabel(priority),
                 screenLabel(screen), osLabel(os), requirements, region,
-                models, top, verdict, benchmarks, buyingWarnings, priceComparison,
+                models, top, verdict,
+                scoreExplanation(purpose, priority, top),
+                benchmarks, buyingWarnings, priceComparison,
                 forecast, anyDemo, LocalDate.now().toString(), dedupe(warnings));
     }
 
@@ -216,6 +229,7 @@ public class LaptopService {
                 screenLabel(screen), osLabel(os), requirements, region,
                 List.of(), null,
                 "Под ваши требования в справочнике моделей не найдено. Измените фильтры.",
+                List.of("Оценка недоступна: модель не подобрана."),
                 List.of(), List.of(), List.of(),
                 "Прогноз недоступен без подобранной модели.",
                 false, LocalDate.now().toString(), dedupe(warnings));
@@ -313,6 +327,34 @@ public class LaptopService {
     private boolean wishesMentionStore(String requirements) {
         String text = requirements.toLowerCase(Locale.ROOT);
         return text.contains("магазин") || text.contains("наличи");
+    }
+
+    /** Прозрачность итоговой оценки ноутбука: базовые веса и усиления под задачу/приоритет. */
+    private List<String> scoreExplanation(String purpose, String priority, LaptopModel top) {
+        List<String> result = new ArrayList<>();
+        result.add("Базовые веса оценки 0–10: CPU 35%, GPU 30%, автономность 15%, экран 10%, вес 10%.");
+        switch (purpose) {
+            case "game" -> result.add("Задача «Игры» добавляет +12% веса GPU: важнее частота кадров, чем запас автономности.");
+            case "montage" -> result.add("Задача «Монтаж» добавляет +10% GPU и +5% CPU: рендер и таймлайн упираются и в графику, и в процессор.");
+            case "programming" -> result.add("Задача «Программирование» добавляет +8% CPU и до +4 балла за 16 ГБ памяти.");
+            case "work" -> result.add("Задача «Работа» добавляет +5% CPU и +3% экрана: комфорт офисных сценариев и чтения.");
+            case "study" -> result.add("Задача «Учёба» добавляет +8% автономности и +3% веса: важнее время работы и переносимость.");
+            default -> result.add("Универсальная задача оставляет базовые веса без усилений.");
+        }
+        switch (priority) {
+            case "battery" -> result.add("Приоритет «Автономность» добавляет +12% веса батареи.");
+            case "weight" -> result.add("Приоритет «Вес» добавляет +12% веса лёгкого корпуса.");
+            case "screen" -> result.add("Приоритет «Экран» добавляет +12% веса яркости и охвата цвета.");
+            case "silence" -> result.add("Приоритет «Тишина» добавляет до +8 баллов за тихую систему охлаждения.");
+            default -> result.add("Приоритет «Производительность» добавляет по +5% CPU и GPU.");
+        }
+        if (top != null) {
+            result.add("Топ-1 " + top.name() + ": CPU mark ≈ " + (int) top.cpuMark()
+                    + ", GPU mark ≈ " + (int) top.gpuMark()
+                    + ", автономность ≈ " + top.batteryHours() + " ч → оценка " + top.scoreLabel() + ".");
+        }
+        result.add("Цена, наличие и гарантия в оценку не входят — они показаны отдельно в таблице и предупреждениях.");
+        return result;
     }
 
     private String purposeLabel(String purpose) {

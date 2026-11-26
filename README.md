@@ -120,6 +120,28 @@ docker compose ps -a
 Анимации используют только `transform` и `opacity`; `blur`, `filter`, большие `box-shadow`
 и внешние шрифты убраны. `will-change` стоит точечно — только на кнопке темы.
 
+## Кэш, метрики и прозрачность отчёта
+
+- Ответы `/api/cheaper`, `/api/build` и `/api/laptops` кэшируются в памяти **12 минут**
+  (`CACHE_TTL_MINUTES`) с ключом из нормализованных параметров запроса: регистр, порядок
+  параметров URL и лишние пробелы не создают копии. Лимит — 200 записей
+  (`CACHE_MAX_ENTRIES`), старые вытесняются. Кэш общий для UI и API: повторный демо-запрос
+  не дёргает магазины и возвращается почти мгновенно.
+- `StoreBreaker` считает подряд блокировки/сетевые ошибки по каждому магазину. После трёх
+  (`BREAKER_FAILURE_THRESHOLD`) цепь размыкается на 60 секунд (`BREAKER_COOLDOWN_SECONDS`),
+  затем делается один пробный запрос. Пустая SPA-оболочка фиксируется как метрика `empty`,
+  но цепь не размыкает: это не доказательство блокировки.
+- Метрики Micrometer открыты через `/actuator/metrics`: `pt.cache.access`, `pt.cache.entries`,
+  `pt.store.requests`, `pt.store.latency`, `pt.store.circuit`, `pt.store.breaker.open`.
+  Метрики доступны без входа — на защите удобно показать, что повторный запрос попал в кэш.
+- В таблицах есть переключатель **«Только реальные цены»** (`static/filter.js`): он скрывает
+  строки с бейджем `ДЕМО` в отчётах конфигуратора и демо-колонки в матрице сравнения. Если
+  реальных цен нет, показывается честное сообщение, а не пустая таблица.
+- Отчёт конфигуратора объясняет веса профиля и почему выбраны именно CPU/GPU
+  (`weightExplanation`, раздел «🧠 Как считались веса и выбор CPU/GPU»). Подбор ноутбуков
+  показывает базовые веса, усиления под задачу/приоритет и разбор топ-1
+  (`scoreExplanation`, раздел «🧠 Как считалась оценка»).
+
 ## Документы защиты
 
 - Тема и уникальность: **[docs/topic.md](docs/topic.md)**
@@ -135,6 +157,24 @@ docker compose ps -a
 curl.exe http://localhost/actuator/health
 # {"status":"UP","groups":["liveness","readiness"]}
 ```
+
+Кэш и breaker видны в метриках:
+
+```powershell
+curl.exe http://localhost/actuator/metrics/pt.cache.access
+curl.exe 'http://localhost/actuator/metrics/pt.cache.access?tag=result:hit'
+curl.exe 'http://localhost/actuator/metrics/pt.store.requests?tag=outcome:blocked'
+```
+
+Готовый демо-прогон сохраняет HTML и JSON трёх сценариев в `artifacts/demo`
+(папка в `.gitignore`):
+
+```powershell
+.\tools\demo-run.ps1
+```
+
+В GitHub Actions (`.github/workflows/ci.yml`) на каждый push в `main` запускаются
+`mvn test` и `docker compose` + `bash tools/smoke.sh`: логин, две сборки, health и метрики.
 
 Вход и поиск через API:
 
@@ -163,12 +203,12 @@ curl.exe -s -X POST http://localhost/api/laptops -H "Authorization: Bearer $toke
 
 Ответ `/api/build` содержит `parts` (модель, цена, `offers` с магазином/ценой/ссылкой/наличием
 и флагами `demo`/`promo`), `totalPrice`, `budget`, `budgetDelta`, `score` (0–10), `rationale`,
-`assemblySteps`, `bottlenecks`, `alternative`, `pricedAt` и `warnings`.
+`weightExplanation`, `assemblySteps`, `bottlenecks`, `alternative`, `pricedAt` и `warnings`.
 
 Ответ `/api/laptops` содержит `models` (точный `sku`, конфигурацию, CPU/GPU/RAM/SSD/экран,
 цену, магазин, ссылку, availability, warranty, `score10` (0–10), бенчмарки и тесты
-автономности, порты, апгрейд, плюсы/минусы), `topPick`, `verdict`, `benchmarks`,
-`buyingWarnings`, `priceComparison`, `forecast`, `pricedAt` и `warnings`.
+автономности, порты, апгрейд, плюсы/минусы), `topPick`, `verdict`, `scoreExplanation`,
+`benchmarks`, `buyingWarnings`, `priceComparison`, `forecast`, `pricedAt` и `warnings`.
 
 ### Эндпоинты
 
@@ -183,6 +223,7 @@ curl.exe -s -X POST http://localhost/api/laptops -H "Authorization: Bearer $toke
 | `POST` | `/api/build` | собрать ПК/ноутбук, дать 2–3 цены на деталь и полный отчёт |
 | `POST` | `/api/laptops` | сравнить 3–5 конкретных моделей ноутбуков и выбрать топ-1 |
 | `GET` | `/actuator/health` | healthcheck Docker и nginx |
+| `GET` | `/actuator/metrics` | счётчики кэша, breaker'а и латентности магазинов |
 
 ## Важное
 

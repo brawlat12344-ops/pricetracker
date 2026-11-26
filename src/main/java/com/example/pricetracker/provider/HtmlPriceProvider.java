@@ -1,5 +1,7 @@
 package com.example.pricetracker.provider;
 
+import com.example.pricetracker.store.StoreBreaker;
+import com.example.pricetracker.store.StoreRegistry;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Component;
@@ -28,6 +30,13 @@ public class HtmlPriceProvider implements PriceProvider {
             .connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
+    private final StoreRegistry stores;
+    private final StoreBreaker breaker;
+
+    public HtmlPriceProvider(StoreRegistry stores, StoreBreaker breaker) {
+        this.stores = stores;
+        this.breaker = breaker;
+    }
 
     @Override
     public String name() {
@@ -36,6 +45,12 @@ public class HtmlPriceProvider implements PriceProvider {
 
     @Override
     public PriceResult fetch(String url) {
+        String store = storeKey(url);
+        if (!breaker.allow(store)) {
+            throw new PriceProvider.ProviderException("source store is temporarily unavailable (circuit open)");
+        }
+        long started = System.nanoTime();
+        String outcome = "error";
         try {
             HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                     .timeout(Duration.ofSeconds(10))
@@ -43,27 +58,47 @@ public class HtmlPriceProvider implements PriceProvider {
                     .GET()
                     .build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() / 100 != 2) {
-                throw new PriceProvider.ProviderException("HTTP " + response.statusCode() + " for " + url);
+            int status = response.statusCode();
+            if (status / 100 != 2) {
+                outcome = "blocked";
+                throw new PriceProvider.ProviderException("HTTP " + status + " for " + url);
             }
             Document doc = Jsoup.parse(response.body());
 
             for (org.jsoup.nodes.Element script : doc.select("script[type=application/ld+json]")) {
                 Matcher matcher = PRICE.matcher(script.data());
                 if (matcher.find()) {
+                    outcome = "success";
+                    breaker.success(store);
                     return PriceResult.of(parse(matcher.group(1)));
                 }
             }
             Matcher meta = META.matcher(response.body());
             if (meta.find()) {
+                outcome = "success";
+                breaker.success(store);
                 return PriceResult.of(parse(meta.group(1)));
             }
+            outcome = "empty";
             throw new PriceProvider.ProviderException("No structured price found on " + url);
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
             throw new PriceProvider.ProviderException("Failed to fetch " + url, e);
+        } finally {
+            breaker.latency(store, started);
+            if (!"success".equals(outcome)) {
+                breaker.failure(store, outcome);
+            }
+        }
+    }
+
+    private String storeKey(String url) {
+        try {
+            return stores.detect(URI.create(url).getHost()).key();
+        } catch (RuntimeException ex) {
+            return "generic";
         }
     }
 

@@ -15,6 +15,7 @@ public record LaptopResponse(
         List<LaptopModel> models,
         LaptopModel topPick,
         String verdict,
+        List<String> scoreExplanation,
         List<String> benchmarks,
         List<String> buyingWarnings,
         List<String> priceComparison,

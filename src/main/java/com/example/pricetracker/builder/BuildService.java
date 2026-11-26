@@ -1,5 +1,7 @@
 package com.example.pricetracker.builder;
 
+import com.example.pricetracker.cache.CacheKeys;
+import com.example.pricetracker.cache.ResponseCache;
 import com.example.pricetracker.builder.PartCatalog.Part;
 import com.example.pricetracker.compare.CategoryCatalog;
 import com.example.pricetracker.compare.CategoryCatalog.AttributeDef;
@@ -35,14 +37,24 @@ public class BuildService {
     private final PartCatalog catalog;
     private final CategoryCatalog categories;
     private final PartPriceService prices;
+    private final ResponseCache cache;
 
-    public BuildService(PartCatalog catalog, CategoryCatalog categories, PartPriceService prices) {
+    public BuildService(PartCatalog catalog, CategoryCatalog categories, PartPriceService prices,
+                        ResponseCache cache) {
         this.catalog = catalog;
         this.categories = categories;
         this.prices = prices;
+        this.cache = cache;
     }
 
     public BuildResponse build(BuildRequest request) {
+        String key = CacheKeys.key("build", request.categoryOrPc(), request.purposeOrBalanced(),
+                request.priorityOrPerformance(), request.wishesOrEmpty(), request.regionOrRussia(),
+                request.budgetOrDefault());
+        return cache.get("build", key, BuildResponse.class, () -> buildUncached(request));
+    }
+
+    private BuildResponse buildUncached(BuildRequest request) {
         String category = request.categoryOrPc();
         String purpose = request.purposeOrBalanced();
         String priority = request.priorityOrPerformance();
@@ -142,6 +154,7 @@ public class BuildService {
                 verdict,
                 dedupe(warnings),
                 rationale(parts),
+                weightExplanation(weights, chosen.parts(), purpose, priority, wishes),
                 assemblySteps(chosen.parts()),
                 bottlenecks(chosen.parts(), anyDemo),
                 alternative,
@@ -391,6 +404,60 @@ public class BuildService {
                     + " Совместимость: " + part.compatibility() + ".");
         }
         return result;
+    }
+
+    /** Прозрачность весов: какие требования усилили CPU/GPU и как считается оценка. */
+    private List<String> weightExplanation(Map<String, Double> weights, List<Part> chosen,
+                                           String purpose, String priority, String wishes) {
+        List<String> result = new ArrayList<>();
+        double sum = weights.values().stream().mapToDouble(Double::doubleValue).sum();
+        result.add("Профиль «" + purposeLabel(purpose) + "» и приоритет «" + priorityLabel(priority)
+                + "»: сумма весов " + Math.round(sum)
+                + ". Вес определяет долю баллов компонента в итоговой оценке 0–10.");
+        weights.entrySet().stream()
+                .sorted((left, right) -> Double.compare(right.getValue(), left.getValue()))
+                .limit(4)
+                .forEach(entry -> result.add(labelFor(entry.getKey()) + " — вес "
+                        + Math.round(entry.getValue()) + " ("
+                        + (sum == 0 ? 0 : Math.round(entry.getValue() * 100 / sum))
+                        + "% итоговой оценки)."));
+
+        Part cpu = find(chosen, "cpu");
+        Part gpu = find(chosen, "gpu");
+        if (cpu != null) {
+            result.add("CPU " + cpu.name() + ": вес " + Math.round(weight(weights, "cpu"))
+                    + ", " + reason(cpu, chosen, purpose, priority, ""));
+        }
+        if (gpu != null) {
+            result.add("GPU " + gpu.name() + ": вес " + Math.round(weight(weights, "gpu"))
+                    + ", " + reason(gpu, chosen, purpose, priority, ""));
+        }
+        if (wishes.toLowerCase(Locale.ROOT).contains("rgb")) {
+            result.add("Пожелание RGB добавляет до +3 балла за каждый компонент с подсветкой.");
+        }
+        result.add("Совместимость, бюджет и наличие проверяются отдельно и в оценку не входят.");
+        return result;
+    }
+
+    private String labelFor(String type) {
+        return switch (type) {
+            case "cpu" -> "Процессор";
+            case "gpu" -> "Видеокарта";
+            case "motherboard" -> "Материнская плата";
+            case "ram_gb" -> "Оперативная память";
+            case "storage_gb" -> "SSD";
+            case "psu_w" -> "Блок питания";
+            case "cooling" -> "Охлаждение";
+            case "case" -> "Корпус";
+            case "screen" -> "Экран";
+            case "battery_mah" -> "Автономность";
+            case "weight_kg" -> "Вес";
+            default -> type;
+        };
+    }
+
+    private double weight(Map<String, Double> weights, String type) {
+        return weights.getOrDefault(type, 0.0);
     }
 
     private List<String> assemblySteps(List<Part> parts) {
