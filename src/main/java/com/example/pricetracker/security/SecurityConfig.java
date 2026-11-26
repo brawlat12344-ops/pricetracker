@@ -24,8 +24,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/actuator/health", "/actuator/health/**",
                                 "/login", "/logout",
-                                "/api/auth/login", "/style.css", "/waves.svg",
-                                "/contours-wide.svg", "/contours-tall.svg", "/favicon.ico", "/error")
+                                "/api/auth/login", "/style.css", "/theme.js", "/waves.svg",
+                                "/favicon.ico", "/error")
                         .permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, failure) -> {
