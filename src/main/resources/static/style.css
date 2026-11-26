@@ -222,6 +222,26 @@ ul > li:nth-child(10) { animation-delay:.40s; }
 .actions button, .actions .btn { min-height:34px; padding:7px 11px; font-size:13px; }
 .pager .muted { padding:0 6px; }
 
+/* Одинаковая геометрия для всех действий формы: радио, сабмиты и «Открыть». */
+.choice-row { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; max-width:488px; }
+.choice {
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  flex:1 1 220px; min-width:220px; min-height:38px; padding:9px 16px;
+  border:1px solid var(--stroke); border-radius:10px;
+  background:var(--chip); color:var(--text);
+  font:600 14px/1 system-ui,"Segoe UI",sans-serif; white-space:nowrap;
+  cursor:pointer; vertical-align:middle;
+  transition:transform var(--dur) var(--ease), background-color var(--dur) ease,
+             border-color var(--dur) ease;
+}
+.choice:hover { transform:translateY(-2px); border-color:rgba(var(--accent-rgb),.55); }
+.choice:active { transform:translateY(0) scale(.98); }
+.choice:has(input:checked) {
+  background:rgba(var(--accent-rgb),.14); border-color:rgba(var(--accent-rgb),.55);
+}
+.form-actions .btn { min-width:240px; }
+.btn-open { min-width:96px; }
+
 .badge {
   display:inline-block; padding:3px 9px; border-radius:999px; font-size:12px; font-weight:700;
   background:var(--danger); color:#fff;
