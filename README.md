@@ -1,13 +1,17 @@
-# PriceTracker — поиск той же конфигурации дешевле
+# PriceTracker — поиск дешевле и локальный конфигуратор сборок
 
 ![PriceTracker — тёмный баннер](docs/assets/pricetracker-banner.png)
 
 Stack: **Java 17 + Spring Boot 3.3 + Thymeleaf + Flyway + PostgreSQL 16 + nginx**.
 Python, Node.js и Next.js не используются: страницы — серверные шаблоны, анимации — CSS.
 
-Приложение делает одну вещь: по одной ссылке на товар в DNS-Shop, М.Видео, Ситилинке,
-Ozon, Wildberries или любом другом магазине ищет **ту же или лучшую конфигурацию дешевле**.
-Найденные карточки — разовый отчёт; в отслеживание они не добавляются.
+На странице `/cheaper` работают два режима:
+1. **Поиск дешевле:** по одной ссылке на товар в DNS-Shop, М.Видео, Ситилинке, Ozon,
+   Wildberries или любом другом магазине ищется **та же или лучшая конфигурация дешевле**.
+2. **Локальный конфигуратор:** по теме, цели и бюджету из каталога выбираются совместимые
+   комплектующие для ПК или ноутбука, затем ищется цена на всю сборку.
+
+Найденные карточки и собранные конфигурации — разовые отчёты; в отслеживание они не добавляются.
 
 ## Запуск
 
@@ -49,7 +53,7 @@ docker compose ps -a
 |---|---|---|---|
 | `db` | `services/db` | PostgreSQL 16, volume `db_data` | SQL :5432 |
 | `migrate` | `services/migrate` | Flyway V1–V4, one-shot | CLI / Flyway |
-| `app` | `services/app` | REST API + Thymeleaf UI + поиск дешевле | `/api/**`, `/cheaper`, `/actuator/**` |
+| `app` | `services/app` | REST API + Thymeleaf UI + поиск дешевле и конфигуратор | `/api/**`, `/cheaper`, `/actuator/**` |
 | `nginx` | `services/nginx` | reverse proxy, точка входа :80 | `/`, `/api/` |
 
 У каждого сервиса есть `Dockerfile` и `README.md` в `services/<имя>/`.
@@ -62,6 +66,8 @@ docker compose ps -a
 4. Получить вердикт и наглядную матрицу сравнения комплектаций: для ПК это CPU, GPU, RAM, SSD,
    БП, охлаждение, ОС и корпус — с иконками, весами и шкалами баллов. Ссылки на магазины
    находятся в заголовках столбцов таблицы.
+5. Либо во второй форме выбрать тему (ПК/ноутбук), цель (игры, работа, учёба, универсально)
+   и бюджет — локальный конфигуратор подберёт детали и покажет цену на сборку целиком.
 
 `StoreRegistry` определяет магазин по хосту. `StoreOffersSource` запрашивает поисковую страницу
 магазина и (при `crossStore=true`) других магазинов, запасной канал — Bing.
@@ -79,6 +85,12 @@ docker compose ps -a
 Скоринг переиспользует `ComparisonService.evaluate`: веса из `CategoryCatalog` для четырёх тем
 (`laptop`, `phone`, `headphones`, `pc`), а в вердикте и таблице показываются две оценки по шкале
 0–10 — за конфигурацию и за цену/качество. Поиск ничего не пишет в БД.
+
+Конфигуратор работает без внешней языковой модели: `PartCatalog` задаёт каталог деталей,
+`BuildService` проверяет совместимость (сокет, тип памяти, мощность БП) и выбирает детали
+под цель и бюджет, а `PartPriceService` ищет цену одним запросом на всю сборку. Если карточка
+не похожа на запрос или цена явно посторонняя, показывается демо-цена каталога с бейджем
+`ДЕМО-ЦЕНА` и ссылкой на реальный поиск. Оценки деталей и сборки тоже находятся в диапазоне 0–10.
 
 ## Фон интерфейса
 
@@ -118,6 +130,10 @@ $token = (curl.exe -s -X POST http://localhost/api/auth/login `
 $body = '{"url":"https://www.dns-shop.ru/product/8f1a2b3c4d5e/pc-rtx-4070-core-i5-32gb/","category":"pc","title":"сборка ПК Core i5 RTX 4070 32 ГБ","limit":10,"crossStore":true}'
 curl.exe -s -X POST http://localhost/api/cheaper -H "Authorization: Bearer $token" `
   -H "Content-Type: application/json" -d $body
+
+$buildBody = '{"category":"pc","purpose":"game","budget":120000}'
+curl.exe -s -X POST http://localhost/api/build -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" -d $buildBody
 ```
 
 В ответе: `store`, `sourcePrice`, `sourceSpecs`, `items` (`store`, `title`, `url`, `price`,
@@ -130,11 +146,12 @@ curl.exe -s -X POST http://localhost/api/cheaper -H "Authorization: Bearer $toke
 | Метод | Путь | Назначение |
 |---|---|---|
 | `GET` | `/` | редирект на `/cheaper` |
-| `GET` | `/login`, `/cheaper` | UI входа и поиска |
+| `GET` | `/login`, `/cheaper` | UI входа, поиска и конфигуратора (`mode=build`) |
 | `POST` | `/login`, `/logout` | формы входа/выхода, httpOnly-cookie |
 | `POST` | `/api/auth/login` | токен `access_token` (регистрации нет) |
 | `GET` | `/api/categories` | темы и веса характеристик |
 | `POST` | `/api/cheaper` | найти ту же конфигурацию дешевле в магазинах |
+| `POST` | `/api/build` | собрать ПК/ноутбук из каталога и оценить цену сборки |
 | `GET` | `/actuator/health` | healthcheck Docker и nginx |
 
 ## Важное

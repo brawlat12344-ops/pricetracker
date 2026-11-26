@@ -70,7 +70,7 @@ docker exec pt-db psql -U ptuser -d pricetracker -c "\dt"
 ```powershell
 $base = "http://localhost/api"
 
-$token = (curl.exe -s -X POST "$base/auth/login" `
+$token = (curl.exe -s -X POST "$base/api/auth/login" `
   -H "Content-Type: application/json" `
   -d '{"email":"demo@example.com","password":"demopass123"}' | ConvertFrom-Json).access_token
 ```
@@ -81,7 +81,7 @@ $token = (curl.exe -s -X POST "$base/auth/login" `
 Список тем:
 
 ```powershell
-curl.exe -s "$base/categories" -H "Authorization: Bearer $token"
+curl.exe -s "$base/api/categories" -H "Authorization: Bearer $token"
 ```
 
 ```json
@@ -92,7 +92,7 @@ curl.exe -s "$base/categories" -H "Authorization: Bearer $token"
 
 ```powershell
 $body = '{"url":"https://www.dns-shop.ru/product/8f1a2b3c4d5e/pc-rtx-4070-core-i5-32gb/","category":"pc","title":"сборка ПК Core i5 RTX 4070 32 ГБ","limit":10,"crossStore":true}'
-curl.exe -s -X POST "$base/cheaper" -H "Authorization: Bearer $token" `
+curl.exe -s -X POST "$base/api/cheaper" -H "Authorization: Bearer $token" `
   -H "Content-Type: application/json" -d $body
 ```
 
@@ -126,7 +126,42 @@ curl.exe -s -X POST "$base/cheaper" -H "Authorization: Bearer $token" `
 `crossStore:false` ограничивает поиск магазином из ссылки. DNS отвечает `401`, Ситилинк — `429`,
 М.Видео отдаёт пустую SPA-оболочку, поэтому фолбэк — демо-карточки с предупреждением.
 
-## 7. UI
+## 7. Локальная сборка ПК/ноутбука
+
+```powershell
+$body = '{"category":"pc","purpose":"game","budget":120000}'
+curl.exe -s -X POST "$base/api/build" -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" -d $body
+```
+
+Ожидаемый вывод (сокращённо):
+
+```json
+{
+  "category": "pc",
+  "categoryLabel": "Сборка ПК",
+  "purpose": "Игры",
+  "budget": 120000,
+  "parts": [
+    {"type":"cpu","label":"CPU · Процессор","name":"Ryzen 5 7600","score10":7.4,"reason":"процессор под задачу: игры"}
+  ],
+  "query": "сборка ПК Ryzen 5 7600 AM5 DDR5 ...",
+  "totalPrice": 120000.00,
+  "store": "Демо-каталог",
+  "priceUrl": "https://www.dns-shop.ru/search/?q=...",
+  "demoPrice": true,
+  "score": 7.4,
+  "verdict": "Сборка: 120 000 ₽ (без превышения бюджета). Оценка 7.4/10. Демо-цена — проверьте в магазине.",
+  "warnings": ["Реальную цену по сборке получить не удалось: показан расчёт по демо-каталогу. ..."]
+}
+```
+
+`BuildService` проверяет сокет CPU, тип памяти и запас мощности БП; `score` и `score10` лежат
+в диапазоне 0–10. Цена ищется одним запросом на всю сборку. Если сайт блокирует парсер или
+найдена посторонняя карточка, `demoPrice=true`, показывается бейдж `ДЕМО-ЦЕНА` и предупреждение.
+Страница с тем же результатом: `/cheaper?mode=build&category=pc&purpose=game&budget=120000`.
+
+## 8. UI
 
 ```powershell
 curl.exe -I http://localhost/
@@ -134,8 +169,9 @@ curl.exe -s http://localhost/cheaper -H "Cookie: pricetracker_token=$token"
 ```
 
 - `http://localhost/` → `302` на `/cheaper`;
-- `http://localhost/cheaper` → HTTP 200, форма, адаптивная навигация, анимации;
+- `http://localhost/cheaper` → HTTP 200, две формы, адаптивная навигация, анимации;
 - после поиска: вердикт, предупреждения и сравнение комплектаций; отдельного списка предложений нет;
+- после `mode=build`: карточка «Готовая конфигурация», цена сборки, оценка 0–10, детали и бейдж `ДЕМО-ЦЕНА`;
 - названия в заголовках столбцов таблицы — кликабельные ссылки `target="_blank"`: демо-варианты
   открывают поиск конфигурации в DNS, М.Видео, Ситилинке, Ozon или Wildberries;
 - бейджи `ДЕМО-ЦЕНА` и `ЛУЧШЕЕ ЗА ЦЕНУ` остаются в таблице;
@@ -143,10 +179,11 @@ curl.exe -s http://localhost/cheaper -H "Cookie: pricetracker_token=$token"
 - фон страниц — `#000000` с тонкими белыми изолиниями: `contours-wide.svg` для альбомного
   окна, `contours-tall.svg` для портретного; генератор — `tools/contours.html`.
 
-## 8. Что фотографировать
+## 9. Что фотографировать
 
 1. Вывод `docker compose ps -a` (четыре сервиса, без воркера).
 2. Вывод `curl.exe http://localhost/actuator/health`.
 3. Вывод `POST /api/cheaper` с `store`, `sourcePrice`, `items` и `warnings`.
 4. Страницу `/cheaper` с формой, коротким вердиктом, скидками и 10-балльной таблицей оценок.
-5. Вывод `docker exec pt-db psql ... \dt` — только `users` и Flyway-история.
+5. Вывод `POST /api/build` или страницу `/cheaper?mode=build...` с готовой сборкой и ценой.
+6. Вывод `docker exec pt-db psql ... \dt` — только `users` и Flyway-история.

@@ -306,6 +306,33 @@ code { background:rgba(255,255,255,.07); padding:2px 6px; border-radius:6px; }
   to   { transform:scaleX(1); transform-origin:left; }
 }
 
+/* ---------- Локальный конфигуратор ---------- */
+.build-total {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;
+  margin:14px 0;
+}
+.build-total > div {
+  display:flex; flex-direction:column; gap:4px; padding:10px 12px;
+  border:1px solid var(--stroke); border-radius:12px;
+  background:rgba(56,189,248,.06);
+}
+.build-total strong { font-size:18px; }
+.builder-parts {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:10px; margin:14px 0;
+}
+.part-card {
+  padding:11px 12px; border-radius:12px; border:1px solid var(--stroke);
+  background:rgba(255,255,255,.035); animation:itemIn .4s var(--ease) both;
+}
+.part-type {
+  color:var(--accent); font-size:11px; font-weight:800;
+  letter-spacing:.06em; text-transform:uppercase;
+}
+.part-name { margin:5px 0 3px; font-weight:700; }
+.part-spec { color:var(--muted); font-size:12px; }
+.part-score { margin-top:8px; font-size:12px; font-weight:700; }
+
 @media (max-width:720px) {
   header { justify-content:flex-start; }
   .spec-banner img { width:130px; height:100px; }

@@ -56,6 +56,18 @@ public class StoreOffersSource {
         return new Result(sourceStore, query, offers);
     }
 
+    /** Поиск по готовому текстовому запросу — используется конфигуратором. */
+    public Result searchQuery(String query, int limit, List<String> warnings) {
+        List<StoreProductParser.Offer> offers = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        StoreRegistry.Store primary = stores.byKey("dns");
+        searchStore(primary, query, "", limit, offers, seen, warnings);
+        if (offers.isEmpty()) {
+            searchStore(stores.byKey("generic"), query, "", limit, offers, seen, warnings);
+        }
+        return new Result(primary, query, offers);
+    }
+
     private void searchStore(StoreRegistry.Store store, String query, String host, int limit,
                              List<StoreProductParser.Offer> offers, Set<String> seen,
                              List<String> warnings) {
