@@ -201,6 +201,7 @@ ul > li:nth-child(8) { animation-delay:.32s; }
 ul > li:nth-child(9) { animation-delay:.36s; }
 ul > li:nth-child(10) { animation-delay:.40s; }
 .warning-list > li { padding:3px 0; }
+.warning { color:var(--accent); font-weight:600; }
 .alert-row, .row {
   display:flex; gap:12px; align-items:center; padding:8px 0;
   animation:itemIn .4s var(--ease) both;

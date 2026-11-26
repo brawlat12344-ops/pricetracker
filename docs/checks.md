@@ -125,6 +125,11 @@ curl.exe -s -X POST "$base/api/cheaper" -H "Authorization: Bearer $token" `
 из исходника не подменяются, поэтому «дешевле» означает ту же или лучшую комплектацию.
 `crossStore:false` ограничивает поиск магазином из ссылки. DNS отвечает `401`, Ситилинк — `429`,
 М.Видео отдаёт пустую SPA-оболочку, поэтому фолбэк — демо-карточки с предупреждением.
+Если цена со страницы не прочитана, добавьте `"sourcePrice": 89990` в запрос (в UI — поле
+«Цена на странице, ₽»): поле `priceEstimated` станет `false`, вердикт перестанет быть
+«Ориентиром», а сравнение пойдёт по реальной цене. Ссылки «Открыть» в карточках ведут на
+короткий поиск вида `mvideo.ru/search?q=сборка ПК core i5 rtx 4070 32 ГБ` — он открывает
+реальные результаты; раньше в запрос попадали БП, ОС и корпус, и магазины ничего не находили.
 
 ## 7. Локальная сборка ПК/ноутбука
 
@@ -212,8 +217,10 @@ curl.exe 'http://localhost/actuator/metrics/pt.store.requests?tag=outcome:blocke
 - при повторных HTTP 401/403/429/202 или сетевых ошибках `pt.store.circuit` получает событие
   `open`, а `pt.store.breaker.open` равен `1`; через cooldown делается пробный запрос;
 - пустая SPA-оболочка фиксируется как `outcome=empty`, но цепь не размыкается;
+- `mvn test` — 9 тестов, включая `CheapLinksTest`: короткий поисковый запрос, рабочий URL
+  М.Видео и необязательное поле `sourcePrice`;
 - GitHub Actions: `mvn test` → `docker compose build/up` → `bash tools/smoke.sh`;
-- `tools/demo-run.ps1` сохраняет `login.html`, `cheaper.json`, `build-pc.json/html`,
+- `tools/demo-run.ps1` сохраняет `login.html`, `cheaper.json`, `cheaper-priced.json`, `build-pc.json/html`,
   `laptop.json/html`, `health.json`, `metrics.json` и `summary.txt` в `artifacts/demo`.
 
 ## 10. Что фотографировать

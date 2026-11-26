@@ -51,6 +51,12 @@
                            placeholder="Core i5 RTX 4070 32 ГБ">
                 </div>
                 <div>
+                    <label for="cheaperSourcePrice">Цена на странице, ₽ (если видна)</label>
+                    <input id="cheaperSourcePrice" name="sourcePrice" type="number" min="1" step="10"
+                           th:value="${cheaperSourcePrice}"
+                           placeholder="Например, 89990">
+                </div>
+                <div>
                     <label for="cheaperLimit">Сколько предложений</label>
                     <input id="cheaperLimit" name="limit" type="number" min="1" max="10"
                            th:value="${cheaperLimit}">
@@ -362,6 +368,10 @@
     <div class="card" th:if="${result != null}">
         <h2>Вердикт</h2>
         <p th:text="${result.verdict}"></p>
+        <p th:if="${result.priceEstimated}" class="warning">
+            Цена исходника не прочитана с сайта — сравнение идёт с оценкой. Укажите цену на странице
+            в форме выше, иначе результат может оказаться дороже реальной цены товара.
+        </p>
         <p class="muted"
            th:text="'Исходник: ' + ${result.sourceTitle} + ' — ' + ${result.sourcePrice} + ' ₽'
                    + ' · магазин: ' + ${result.store}

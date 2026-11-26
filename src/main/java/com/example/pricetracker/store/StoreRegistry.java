@@ -23,7 +23,7 @@ public class StoreRegistry {
             new Store("dns", "DNS-Shop", List.of("dns-shop.ru", "www.dns-shop.ru", "shop.dns-shop.ru"),
                     "https://www.dns-shop.ru/search/?q={q}", true),
             new Store("mvideo", "М.Видео", List.of("mvideo.ru", "www.mvideo.ru", "m.video"),
-                    "https://www.mvideo.ru/products/search?q={q}", true),
+                    "https://www.mvideo.ru/search?q={q}", true),
             new Store("citilink", "Ситилинк", List.of("citilink.ru", "www.citilink.ru"),
                     "https://www.citilink.ru/search/?text={q}", true),
             new Store("ozon", "Ozon", List.of("ozon.ru", "www.ozon.ru"),

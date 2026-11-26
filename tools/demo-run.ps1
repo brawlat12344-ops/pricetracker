@@ -54,6 +54,12 @@ Write-Payload $cheaperPayload '{"url":"https://www.dns-shop.ru/product/12345678/
 $cheaperCode = Save-Response "$BaseUrl/api/cheaper" (Join-Path $out 'cheaper.json') 'POST' $cheaperPayload
 $summary.Add("cheaper.json : HTTP $cheaperCode")
 
+# Второй запрос с ценой со страницы: показывает честное сравнение без «Ориентира».
+$pricedPayload = Join-Path $out 'cheaper-priced-request.json'
+Write-Payload $pricedPayload '{"url":"https://www.dns-shop.ru/product/12345678/gaming-pc/","category":"pc","title":"Core i5 RTX 4070 32GB","limit":5,"crossStore":true,"sourcePrice":89990}'
+$pricedCode = Save-Response "$BaseUrl/api/cheaper" (Join-Path $out 'cheaper-priced.json') 'POST' $pricedPayload
+$summary.Add("cheaper-priced.json : HTTP $pricedCode")
+
 $buildPayload = Join-Path $out 'build-request.json'
 Write-Payload $buildPayload '{"category":"pc","purpose":"game","priority":"performance","wishes":"RGB","region":"Moscow","budget":120000}'
 $buildCode = Save-Response "$BaseUrl/api/build" (Join-Path $out 'build-pc.json') 'POST' $buildPayload

@@ -43,6 +43,7 @@ public class CheapSearchService {
     private final SpecProviderRegistry specProviders;
     private final HtmlPriceProvider htmlPrice;
     private final ResponseCache cache;
+    private final SearchQueryBuilder queries;
 
     public CheapSearchService(StoreRegistry stores,
                               StoreOffersSource offersSource,
@@ -54,7 +55,8 @@ public class CheapSearchService {
                               ComparisonService comparisons,
                               SpecProviderRegistry specProviders,
                               HtmlPriceProvider htmlPrice,
-                              ResponseCache cache) {
+                              ResponseCache cache,
+                              SearchQueryBuilder queries) {
         this.stores = stores;
         this.offersSource = offersSource;
         this.demoSource = demoSource;
@@ -66,12 +68,13 @@ public class CheapSearchService {
         this.specProviders = specProviders;
         this.htmlPrice = htmlPrice;
         this.cache = cache;
+        this.queries = queries;
     }
 
     public CheaperResponse find(CheaperRequest request) {
         String key = CacheKeys.key("cheaper",
                 CacheKeys.url(request.url()), request.categoryOrPc(), request.title(),
-                request.limitOrDefault(), request.crossStore());
+                request.limitOrDefault(), request.crossStore(), request.knownSourcePrice());
         return cache.get("cheaper", key, CheaperResponse.class, () -> findUncached(request));
     }
 
@@ -86,7 +89,8 @@ public class CheapSearchService {
 
         String query = queryExtractor.extract(url, request.title());
         StoreRegistry.Store store = stores.detect(host(url));
-        SourceCard source = resolveSource(url, category, query, request.title(), warnings);
+        SourceCard source = resolveSource(url, category, query, request.title(),
+                request.knownSourcePrice(), warnings);
 
         List<CheaperItem> items = new ArrayList<>();
         Set<String> seen = new HashSet<>();
@@ -111,13 +115,16 @@ public class CheapSearchService {
                     + "(на страницах не нашлись характеристики или цена выше исходной).");
         }
 
+        // При оценённой цене первые демо-варианты (скидка 5–13%) не проходят порог 15%,
+        // поэтому запрашиваем больше кандидатов — иначе при limit=3 список был бы пустым.
+        int fallbackLimit = source.priceEstimated() ? Math.min(10, limit + 6) : limit;
         List<DemoCheaperSource.Offer> fallback = demoSource.offers(
-                category, source.specs(), source.price(), limit);
+                category, source.specs(), source.price(), fallbackLimit);
         for (DemoCheaperSource.Offer offer : fallback) {
-            // Ссылка ведёт на реальный поиск магазина по найденной комплектации — по ней можно
-            // перейти и проверить актуальную цену вручную.
+            // Ссылка ведёт на реальный поиск магазина по КОРОТКОМУ запросу (модель CPU/GPU/память).
+            // Длинная строка со всеми параметрами не даёт результатов ни в одном магазине.
             String offerUrl = stores.searchUrl(stores.byKey(offer.storeKey()),
-                    specsQuery(offer.specs()), host(url));
+                    queries.build(category, offer.specs(), request.title()), host(url));
             rejected += addItem(items, seen, source, offer.specs(), category, offer.store(),
                     offer.title(), offerUrl, offer.price(), true);
         }
@@ -136,7 +143,10 @@ public class CheapSearchService {
                 .thenComparing(CheaperItem::price));
         CheaperItem winner = items.get(0);
         int discount = winner.discountPercent();
-        String verdict = String.format(
+        String verdict = (source.priceEstimated()
+                ? "Ориентир (цена исходника оценена, уточните её): "
+                : "")
+                + String.format(
                 "%s: %s ₽ (−%d%% к %s ₽). Конфигурация %.1f/10 · цена %.1f/10. "
                         + "Подходит %d, отклонено %d.",
                 winner.store(), money(winner.price()), discount, money(source.price()),
@@ -144,25 +154,12 @@ public class CheapSearchService {
 
         return new CheaperResponse(url, store.label(), category, catalog.get(category).label(),
                 source.title(), source.price(), source.specs(), catalog.get(category).attributes(),
-                items, winner.id(), verdict, warnings, search.offers().size(), rejected);
+                items, winner.id(), verdict, source.priceEstimated(), warnings,
+                search.offers().size(), rejected);
     }
 
     private String money(BigDecimal value) {
         return String.format(Locale.ROOT, "%,.0f", value).replace(',', '\u00A0');
-    }
-
-    private String specsQuery(Map<String, String> specs) {
-        return "сборка ПК "
-                + String.join(" ",
-                specs.getOrDefault("cpu", ""),
-                specs.getOrDefault("gpu", ""),
-                specs.getOrDefault("ram_gb", "") + " ГБ",
-                specs.getOrDefault("storage_gb", "") + " ГБ SSD",
-                "БП " + specs.getOrDefault("psu_w", "") + " Вт",
-                specs.getOrDefault("cooling", ""),
-                specs.getOrDefault("os", ""),
-                specs.getOrDefault("case", ""))
-                .replaceAll("\\s+", " ").trim();
     }
 
     private int addItem(List<CheaperItem> items, Set<String> seen, SourceCard source,
@@ -171,7 +168,7 @@ public class CheapSearchService {
         if (items.size() >= 10 || !seen.add(url)) {
             return 1;
         }
-        if (!matcher.matches(category, source.specs(), specs) || price.compareTo(source.price()) >= 0) {
+        if (!matcher.matches(category, source.specs(), specs) || price.compareTo(source.maxPrice()) >= 0) {
             return 1;
         }
         Evaluation evaluation = comparisons.evaluate(category, specs, price);
@@ -188,7 +185,7 @@ public class CheapSearchService {
     }
 
     private SourceCard resolveSource(String url, String category, String query,
-                                     String title, List<String> warnings) {
+                                     String title, BigDecimal knownPrice, List<String> warnings) {
         String name = title == null || title.isBlank() ? query : title.trim();
 
         Map<String, String> specs = new LinkedHashMap<>();
@@ -210,18 +207,29 @@ public class CheapSearchService {
                     + "взяты из демо-профиля ссылки.");
         }
 
-        BigDecimal price;
-        try {
-            price = htmlPrice.fetch(url).price();
-        } catch (RuntimeException ex) {
-            double score = comparisons.evaluate(category, specs, BigDecimal.ONE).score();
-            double estimated = Math.max(60000, Math.min(450000, 130000.0 * score / 60.0));
-            price = BigDecimal.valueOf(Math.round(estimated / 100) * 100)
-                    .setScale(2, RoundingMode.HALF_UP);
-            warnings.add("Цена исходной страницы недоступна (" + ex.getMessage()
-                    + ") — оценена по комплектации.");
+        BigDecimal price = knownPrice;
+        boolean priceEstimated = false;
+        if (price == null) {
+            try {
+                price = htmlPrice.fetch(url).price();
+            } catch (RuntimeException ex) {
+                double score = comparisons.evaluate(category, specs, BigDecimal.ONE).score();
+                double estimate = Math.max(60000, Math.min(450000, 130000.0 * score / 60.0));
+                price = BigDecimal.valueOf(Math.round(estimate / 100) * 100)
+                        .setScale(2, RoundingMode.HALF_UP);
+                priceEstimated = true;
+                warnings.add("Цена исходной страницы недоступна (" + ex.getMessage()
+                        + ") — оценена по комплектации. Укажите цену в поле «Цена на странице, ₽», "
+                        + "чтобы сравнение было точным.");
+            }
         }
-        return new SourceCard(name, price, specs);
+
+        // Если цена оценена, не выдаём за «дешевле» карточки, которые могут оказаться дороже
+        // реального товара: требуем заметно более низкую цену.
+        BigDecimal maxPrice = priceEstimated
+                ? price.multiply(BigDecimal.valueOf(0.85)).setScale(2, RoundingMode.HALF_UP)
+                : price;
+        return new SourceCard(name, price, maxPrice, specs, priceEstimated);
     }
 
     private String validateUrl(String raw) {
@@ -251,6 +259,7 @@ public class CheapSearchService {
         return URI.create(url).getHost();
     }
 
-    private record SourceCard(String title, BigDecimal price, Map<String, String> specs) {
+    private record SourceCard(String title, BigDecimal price, BigDecimal maxPrice,
+                              Map<String, String> specs, boolean priceEstimated) {
     }
 }

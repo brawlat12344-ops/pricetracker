@@ -13,6 +13,8 @@ import com.example.pricetracker.security.AuthCookie;
 import com.example.pricetracker.service.AuthService;
 import com.example.pricetracker.store.CheapSearchService;
 import jakarta.servlet.http.HttpServletResponse;
+
+import java.math.BigDecimal;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -78,6 +80,7 @@ public class WebController {
                           @RequestParam(required = false) String title,
                           @RequestParam(defaultValue = "10") int limit,
                           @RequestParam(required = false) Boolean crossStore,
+                          @RequestParam(required = false) BigDecimal sourcePrice,
                           @RequestParam(defaultValue = "url") String mode,
                           @RequestParam(defaultValue = "balanced") String purpose,
                           @RequestParam(defaultValue = "performance") String priority,
@@ -94,6 +97,7 @@ public class WebController {
         model.addAttribute("cheaperTitle", title == null ? "" : title);
         model.addAttribute("cheaperLimit", limit);
         model.addAttribute("cheaperCrossStore", crossStore == null || crossStore);
+        model.addAttribute("cheaperSourcePrice", sourcePrice == null ? "" : sourcePrice.toPlainString());
         model.addAttribute("mode", "build".equals(mode) ? "build" : "url");
         model.addAttribute("builderCategory", "laptop".equalsIgnoreCase(category) ? "laptop" : "pc");
         model.addAttribute("builderPurpose", purpose == null ? "balanced" : purpose);
@@ -120,7 +124,7 @@ public class WebController {
                 model.addAttribute("buildResult", build);
             } else if (url != null && !url.isBlank()) {
                 CheaperResponse result = cheaper.find(new CheaperRequest(
-                        url, category, title, limit, crossStore == null || crossStore));
+                        url, category, title, limit, crossStore == null || crossStore, sourcePrice));
                 model.addAttribute("result", result);
             }
         } catch (Exception ex) {

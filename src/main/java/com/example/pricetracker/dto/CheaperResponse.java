@@ -19,6 +19,7 @@ public record CheaperResponse(
         List<CheaperItem> items,
         UUID winnerId,
         String verdict,
+        boolean priceEstimated,
         List<String> warnings,
         int foundOffers,
         int rejectedOffers) {
